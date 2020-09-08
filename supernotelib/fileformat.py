@@ -1,0 +1,186 @@
+# Copyright (c) 2020 jya
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Classes for Suernote file format."""
+
+import json
+
+from . import exceptions
+
+
+#### Constants
+
+PAGE_HEIGHT = 1872
+PAGE_WIDTH = 1404
+
+ADDRESS_SIZE = 4
+LENGTH_FIELD_SIZE = 4
+
+KEY_SIGNATURE = '__signature__'
+KEY_HEADER = '__header__'
+KEY_FOOTER = '__footer__'
+KEY_PAGES = '__pages__'
+KEY_LAYERS = '__layers__'
+
+
+class SupernoteMetadata:
+    """Represents Supernote file structure."""
+    def __init__(self):
+        self.__note = {
+            KEY_SIGNATURE: None,
+            KEY_HEADER: None,
+            KEY_FOOTER: None,
+            KEY_PAGES: None,
+        }
+
+    @property
+    def signature(self):
+        return self.__note[KEY_SIGNATURE]
+
+    @signature.setter
+    def signature(self, value):
+        self.__note[KEY_SIGNATURE] = value
+
+    @property
+    def header(self):
+        return self.__note[KEY_HEADER]
+
+    @header.setter
+    def header(self, value):
+        self.__note[KEY_HEADER] = value
+
+    @property
+    def footer(self):
+        return self.__note[KEY_FOOTER]
+
+    @footer.setter
+    def footer(self, value):
+        self.__note[KEY_FOOTER] = value
+
+    @property
+    def pages(self):
+        return self.__note[KEY_PAGES]
+
+    @pages.setter
+    def pages(self, value):
+        self.__note[KEY_PAGES] = value
+
+    def get_total_pages(self):
+        """Returns total page number.
+
+        Returns
+        -------
+        int
+            total page number
+        """
+        return len(self.__note[KEY_PAGES])
+
+    def is_layer_supported(self, page_number):
+        """Returns true if the page supports layer.
+
+        Parameters
+        ----------
+        page_number : int
+            page number to check
+
+        Returns
+        -------
+        bool
+            true if the page supports layer.
+        """
+        if page_number < 0 or page_number >= self.get_total_pages():
+            raise IndexError(f'page number out of range: {page_number}')
+        return self.__note[KEY_PAGES][page_number].get(KEY_LAYERS) is not None
+
+    def to_json(self, indent=None):
+        """Returns file structure as JSON format string.
+
+        Parameters
+        ----------
+        indent : int
+            optional indent level
+
+        Returns
+        -------
+        str
+            JSON format string
+        """
+        return json.dumps(self.__note, indent=indent, ensure_ascii=False)
+
+
+class Notebook:
+    def __init__(self, metadata):
+        self.metadata = metadata
+        self.pages = []
+        total = metadata.get_total_pages()
+        for i in range(total):
+            self.pages.append(Page(metadata.pages[i]))
+
+    def get_metadata(self):
+        return self.metadata
+
+    def get_total_pages(self):
+        return len(self.pages)
+
+    def get_page(self, number):
+        if number < 0 or number >= len(self.pages):
+            raise IndexError(f'page number out of range: {number}')
+        return self.pages[number]
+
+
+class Page:
+    def __init__(self, page_info):
+        self.metadata = page_info
+        self.layers = []
+        layer_supported = page_info.get(KEY_LAYERS) is not None
+        if layer_supported:
+            for i in range(5):
+                self.layers.append(Layer(self.metadata[KEY_LAYERS][i]))
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def is_layer_supported(self):
+        """Returns True if this page supports layer.
+
+        Returns
+        -------
+        bool
+            True if this page supports layer.
+        """
+        return self.metadata.get(KEY_LAYERS) is not None
+
+    def get_layer(self, number):
+        if number < 0 or number >= len(self.layers):
+            raise IndexError(f'layer number out of range: {number}')
+        return self.layers[number]
+
+    def get_protocol(self):
+        if self.is_layer_supported():
+            # currently MAINLAYER is only supported
+            protocol = self.get_layer(0).metadata.get('LAYERPROTOCOL')
+        else:
+            protocol = self.metadata.get('PROTOCOL')
+        return protocol
+
+
+class Layer:
+    def __init__(self, layer_info):
+        self.metadata = layer_info
+
+    def set_content(self, cotent):
+        self.content = content
