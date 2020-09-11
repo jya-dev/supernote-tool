@@ -64,8 +64,8 @@ class RattaRleDecoder(BaseDecoder):
     BIT_PER_PIXEL = 8
 
     COLOR_BLACK = 0x00
-    COLOR_DARK_GRAY = 0x30
-    COLOR_GRAY = 0x50
+    COLOR_DARK_GRAY = 0x9d
+    COLOR_GRAY = 0xc9
     COLOR_WHITE = 0xff
 
     COLORCODE_BLACK = 0x61
