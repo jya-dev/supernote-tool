@@ -106,7 +106,7 @@ def _get_bitmap_address(metadata, page_number):
 
 class SupernoteParser:
     """Parser for original Supernote."""
-    SN_SIGNATURE = 'SN_FILE_ASA_20190529'
+    SN_SIGNATURES = ['SN_FILE_ASA_20190529']
 
     def parse(self, file_name):
         """Parses a Supernote file and returns SupernoteMetadata object.
@@ -123,16 +123,16 @@ class SupernoteParser:
         """
         with open(file_name, 'rb') as f:
             # check file signature
-            signature = self._read_file_signature(f)
-            if signature != self.SN_SIGNATURE:
+            signature = self._find_matching_signature(f)
+            if signature is None:
                 raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
-            # parse header block
-            header_address = len(self.SN_SIGNATURE) # header is located next to signature
-            header = self._parse_metadata_block(f, header_address)
             # parse footer block
             f.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
             footer_address = int.from_bytes(f.read(fileformat.ADDRESS_SIZE), 'little')
             footer = self._parse_metadata_block(f, footer_address)
+            # parse header block
+            header_address = self._get_header_address(footer)
+            header = self._parse_metadata_block(f, header_address)
             # parse page blocks
             page_addresses = self._get_page_addresses(footer)
             pages = list(map(lambda addr: self._parse_page_block(f, addr), page_addresses))
@@ -143,8 +143,8 @@ class SupernoteParser:
         metadata.pages = pages
         return metadata
 
-    def _read_file_signature(self, fobj):
-        """Reads file signature from file object.
+    def _find_matching_signature(self, fobj):
+        """Reads signature from file object and returns matching signature.
 
         Parameters
         ----------
@@ -153,14 +153,35 @@ class SupernoteParser:
 
         Returns
         -------
-        str
-            signature string
+        string
+            matching signature or None if not found
         """
-        try:
-            signature = fobj.read(len(self.SN_SIGNATURE)).decode()
-        except UnicodeDecodeError:
-            raise exceptions.UnsupportedFileFormat('signature is expected as text')
-        return signature
+        for sig in self.SN_SIGNATURES:
+            try:
+                fobj.seek(0, os.SEEK_SET)
+                signature = fobj.read(len(sig)).decode()
+            except UnicodeDecodeError:
+                # try next signature
+                continue
+            if signature == sig:
+                return signature
+        return None
+
+    def _get_header_address(self, footer):
+        """Returns header address.
+
+        Parameters
+        ----------
+        footer : dict
+            footer parameters
+
+        Returns
+        -------
+        int
+            header address
+        """
+        header_address = int(footer.get('FILE_FEATURE'))
+        return header_address
 
     def _get_page_addresses(self, footer):
         """Returns list of page addresses.
@@ -263,7 +284,10 @@ class SupernoteParser:
 
 class SupernoteXParser(SupernoteParser):
     """Parser for Supernote X-series."""
-    SN_SIGNATURE = 'noteSN_FILE_VER_20200001'
+    SN_SIGNATURES = [
+        'noteSN_FILE_VER_20200001', # Firmware version C.053
+        'noteSN_FILE_VER_20200005'  # Firmware version C.077
+    ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 
     def _get_page_addresses(self, footer):
