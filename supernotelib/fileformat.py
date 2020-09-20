@@ -142,6 +142,7 @@ class Notebook:
 class Page:
     def __init__(self, page_info):
         self.metadata = page_info
+        self.content = None
         self.layers = []
         layer_supported = page_info.get(KEY_LAYERS) is not None
         if layer_supported:
@@ -164,6 +165,9 @@ class Page:
         """
         return self.metadata.get(KEY_LAYERS) is not None
 
+    def get_layers(self):
+        return self.layers
+
     def get_layer(self, number):
         if number < 0 or number >= len(self.layers):
             raise IndexError(f'layer number out of range: {number}')
@@ -177,10 +181,23 @@ class Page:
             protocol = self.metadata.get('PROTOCOL')
         return protocol
 
+    def get_style(self):
+        return self.metadata.get('PAGESTYLE')
+
 
 class Layer:
     def __init__(self, layer_info):
         self.metadata = layer_info
+        self.content = None
 
-    def set_content(self, cotent):
+    def set_content(self, content):
         self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def get_name(self):
+        return self.metadata.get('LAYERNAME')
+
+    def get_protocol(self):
+        return self.metadata.get('LAYERPROTOCOL')

@@ -84,8 +84,9 @@ class RattaRleDecoder(BaseDecoder):
 
     SPECIAL_LENGTH_MARKER = 0xff
     SPECIAL_LENGTH = 0x4000
+    SPECIAL_LENGTH_FOR_BLANK = 0x400
 
-    def decode(self, data):
+    def decode(self, data, all_blank=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -125,7 +126,10 @@ class RattaRleDecoder(BaseDecoder):
 
                 if not data_pushed:
                     if length == self.SPECIAL_LENGTH_MARKER:
-                        length = self.SPECIAL_LENGTH
+                        if all_blank:
+                            length = self.SPECIAL_LENGTH_FOR_BLANK
+                        else:
+                            length = self.SPECIAL_LENGTH
                         waiting.put((colorcode, length))
                         data_pushed = True
                     elif length & 0x80 != 0:
@@ -141,7 +145,11 @@ class RattaRleDecoder(BaseDecoder):
                     color = self.colormap[colorcode]
                     uncompressed += bytearray((color,)) * length
         except StopIteration:
-            pass
+           if len(holder) > 0:
+                (colorcode, length) = holder
+                length = ((length & 0x7f) + 1) << 3
+                color = self.colormap[colorcode]
+                uncompressed += bytearray((color,)) * length
 
         expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH
         if len(uncompressed) != expected_length:

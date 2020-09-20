@@ -77,31 +77,42 @@ def load_notebook(file_name, metadata=None):
 
     with open(file_name, 'rb') as f:
         page_total = metadata.get_total_pages()
-        for i in range(page_total):
-            address = _get_bitmap_address(metadata, i)
-            content = None
-            if address != 0:
-                f.seek(address, os.SEEK_SET)
-                block_length = int.from_bytes(f.read(fileformat.LENGTH_FIELD_SIZE), 'little')
-                content = f.read(block_length)
-            note.get_page(i).set_content(content)
+        for p in range(page_total):
+            addresses = _get_bitmap_address(metadata, p)
+            if len(addresses) == 1: # the page has no layers
+                content = _get_content_at_address(f, addresses[0])
+                note.get_page(p).set_content(content)
+            else:
+                for l, addr in enumerate(addresses):
+                    content = _get_content_at_address(f, addr)
+                    note.get_page(p).get_layer(l).set_content(content)
     return note
+
+def _get_content_at_address(fobj, address):
+    content = None
+    if address != 0:
+        fobj.seek(address, os.SEEK_SET)
+        block_length = int.from_bytes(fobj.read(fileformat.LENGTH_FIELD_SIZE), 'little')
+        content = fobj.read(block_length)
+    return content
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
 
     Returns
     -------
-    int
+    list of int
         bitmap address
     """
+    addresses = []
     layer_supported = metadata.is_layer_supported(page_number)
     if layer_supported:
-        # currently MAINLAYER is only supported
-        address = int(metadata.pages[page_number][fileformat.KEY_LAYERS][0]['LAYERBITMAP'])
+        for l in range(5):      # TODO: use constant
+            address = metadata.pages[page_number][fileformat.KEY_LAYERS][l].get('LAYERBITMAP')
+            addresses.append(0 if address is None else int(address))
     else:
-        address = int(metadata.pages[page_number]['DATA'])
-    return address
+        addresses.append(int(metadata.pages[page_number]['DATA']))
+    return addresses
 
 
 class SupernoteParser:

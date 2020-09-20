@@ -18,6 +18,7 @@ from PIL import Image
 
 from . import decoder
 from . import exceptions
+from . import fileformat
 
 
 class ImageConverter:
@@ -38,14 +39,42 @@ class ImageConverter:
             an image object
         """
         page = self.note.get_page(page_number)
-        binary = page.get_content()
-        decoder = self.find_decoder(page)
-        bitmap, size, bpp = decoder.decode(binary)
-        if bpp == 16:
-            img = Image.frombytes('I;16', size, bitmap)
+        if page.is_layer_supported():
+            imgs = []
+            layers = page.get_layers()
+            for l in layers:
+                binary = l.get_content()
+                if binary is None:
+                    imgs.append(None)
+                    continue
+                decoder = self.find_decoder(l)
+                all_blank = (l.get_name() == 'BGLAYER' and page.get_style() == 'style_white')
+                bitmap, size, bpp = decoder.decode(binary, all_blank)
+                if bpp == 16:
+                    img = Image.frombytes('I;16', size, bitmap)
+                else:
+                    img = Image.frombytes('L', size, bitmap)
+                imgs.append(img)
+            # flatten background and main layer
+            img_bg = imgs[4]
+            img_main = imgs[0]
+            mask = img_main.copy()
+            img = Image.composite(img_bg, img_main, mask)
+            for i in range(3):  # flatten layer1, layer2, layer3 if any
+                img_layer = imgs[i + 1]
+                if img_layer is not None:
+                    mask = img_layer.copy()
+                    img = Image.composite(img, img_layer, mask)
+            return img
         else:
-            img = Image.frombytes('L', size, bitmap)
-        return img
+            binary = page.get_content()
+            decoder = self.find_decoder(page)
+            bitmap, size, bpp = decoder.decode(binary)
+            if bpp == 16:
+                img = Image.frombytes('I;16', size, bitmap)
+            else:
+                img = Image.frombytes('L', size, bitmap)
+            return img
 
     def find_decoder(self, page):
         """Returns a proper decoder for the given page.
