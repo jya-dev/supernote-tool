@@ -25,7 +25,7 @@ from . import fileformat
 
 class BaseDecoder:
     """Abstract decoder class."""
-    def decode(self, data):
+    def decode(self, data, all_blank=False):
         raise NotImplementedError('subclasses must implement decode method')
 
 
@@ -35,7 +35,7 @@ class FlateDecoder(BaseDecoder):
     INTERNAL_PAGE_WIDTH = 1404
     BIT_PER_PIXEL = 16
 
-    def decode(self, data):
+    def decode(self, data, all_blank=False):
         """Uncompress bitmap data.
 
         Parameters

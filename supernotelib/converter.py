@@ -41,43 +41,49 @@ class ImageConverter:
         """
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
-            imgs = []
-            layers = page.get_layers()
-            for l in layers:
-                binary = l.get_content()
-                if binary is None:
-                    imgs.append(None)
-                    continue
-                decoder = self.find_decoder(l)
-                all_blank = (l.get_name() == 'BGLAYER' and page.get_style() == 'style_white')
-                bitmap, size, bpp = decoder.decode(binary, all_blank)
-                if bpp == 16:
-                    img = Image.frombytes('I;16', size, bitmap)
-                else:
-                    img = Image.frombytes('L', size, bitmap)
-                imgs.append(img)
-            # flatten background and main layer
-            img_bg = imgs[4]
-            img_main = imgs[0]
-            mask = img_main.copy().convert('L')
-            mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
-            img = Image.composite(img_main, img_bg, mask)
-            for i in range(3):  # flatten layer1, layer2, layer3 if any
-                img_layer = imgs[i + 1]
-                if img_layer is not None:
-                    mask = img_layer.copy().convert('L')
-                    mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
-                    img = Image.composite(img_layer, img, mask)
-            return img
+            return self._convert_layered_page(page)
         else:
-            binary = page.get_content()
-            decoder = self.find_decoder(page)
-            bitmap, size, bpp = decoder.decode(binary)
-            if bpp == 16:
-                img = Image.frombytes('I;16', size, bitmap)
-            else:
-                img = Image.frombytes('L', size, bitmap)
-            return img
+            return self._convert_nonlayered_page(page)
+
+    def _convert_nonlayered_page(self, page):
+        binary = page.get_content()
+        decoder = self.find_decoder(page)
+        return self._create_image_from_decoder(decoder, binary)
+
+    def _convert_layered_page(self, page):
+        imgs = []
+        layers = page.get_layers()
+        for layer in layers:
+            binary = layer.get_content()
+            if binary is None:
+                imgs.append(None)
+                continue
+            decoder = self.find_decoder(layer)
+            all_blank = (layer.get_name() == 'BGLAYER' and page.get_style() == 'style_white')
+            img = self._create_image_from_decoder(decoder, binary, blank_hint=all_blank)
+            imgs.append(img)
+        # flatten background and main layer
+        img_bg = imgs[4]
+        img_main = imgs[0]
+        img = self._flatten_layers(img_main, img_bg)
+        for i in range(3):  # flatten layer1, layer2, layer3 if any
+            img_layer = imgs[i + 1]
+            if img_layer is not None:
+                img = self._flatten_layers(img_layer, img)
+        return img
+
+    def _flatten_layers(self, fg, bg):
+        mask = fg.copy().convert('L')
+        mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
+        return Image.composite(fg, bg, mask)
+
+    def _create_image_from_decoder(self, decoder, binary, blank_hint=False):
+        bitmap, size, bpp = decoder.decode(binary, blank_hint)
+        if bpp == 16:
+            img = Image.frombytes('I;16', size, bitmap)
+        else:
+            img = Image.frombytes('L', size, bitmap)
+        return img
 
     def find_decoder(self, page):
         """Returns a proper decoder for the given page.
