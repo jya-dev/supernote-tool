@@ -18,6 +18,7 @@ import numpy as np
 import queue
 import zlib
 
+from . import color
 from . import exceptions
 from . import fileformat
 
@@ -63,12 +64,6 @@ class RattaRleDecoder(BaseDecoder):
     """Decoder for RATTA_RLE protocol."""
     BIT_PER_PIXEL = 8
 
-    COLOR_BLACK = 0x00
-    COLOR_DARK_GRAY = 0x9d
-    COLOR_GRAY = 0xc9
-    COLOR_WHITE = 0xfe
-    COLOR_TRANSPARENT = 0xff
-
     COLORCODE_BLACK = 0x61
     COLORCODE_BACKGROUND = 0x62
     COLORCODE_DARK_GRAY = 0x63
@@ -76,11 +71,11 @@ class RattaRleDecoder(BaseDecoder):
     COLORCODE_WHITE = 0x65
 
     colormap = {
-        COLORCODE_BLACK: COLOR_BLACK,
-        COLORCODE_BACKGROUND: COLOR_TRANSPARENT,
-        COLORCODE_DARK_GRAY: COLOR_DARK_GRAY,
-        COLORCODE_GRAY: COLOR_GRAY,
-        COLORCODE_WHITE: COLOR_WHITE,
+        COLORCODE_BLACK: color.BLACK,
+        COLORCODE_BACKGROUND: color.TRANSPARENT,
+        COLORCODE_DARK_GRAY: color.DARK_GRAY,
+        COLORCODE_GRAY: color.GRAY,
+        COLORCODE_WHITE: color.WHITE,
     }
 
     SPECIAL_LENGTH_MARKER = 0xff

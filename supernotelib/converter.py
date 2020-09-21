@@ -16,6 +16,7 @@
 
 from PIL import Image
 
+from . import color
 from . import decoder
 from . import exceptions
 from . import fileformat
@@ -59,13 +60,13 @@ class ImageConverter:
             img_bg = imgs[4]
             img_main = imgs[0]
             mask = img_main.copy().convert('L')
-            mask = mask.point(lambda x: 0 if x == 0xff else 1, mode='1')
+            mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
             img = Image.composite(img_main, img_bg, mask)
             for i in range(3):  # flatten layer1, layer2, layer3 if any
                 img_layer = imgs[i + 1]
                 if img_layer is not None:
                     mask = img_layer.copy().convert('L')
-                    mask = mask.point(lambda x: 0 if x == 0xff else 1, mode='1')
+                    mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
                     img = Image.composite(img_layer, img, mask)
             return img
         else:
