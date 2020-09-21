@@ -66,7 +66,7 @@ class RattaRleDecoder(BaseDecoder):
     COLOR_BLACK = 0x00
     COLOR_DARK_GRAY = 0x9d
     COLOR_GRAY = 0xc9
-    COLOR_WHITE = 0xff
+    COLOR_WHITE = 0xfe
 
     COLORCODE_BLACK = 0x61
     COLORCODE_BACKGROUND = 0x62
