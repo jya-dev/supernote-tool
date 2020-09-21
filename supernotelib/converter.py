@@ -14,6 +14,8 @@
 
 """Converter classes."""
 
+import json
+
 from PIL import Image
 
 from . import color
@@ -51,23 +53,29 @@ class ImageConverter:
         return self._create_image_from_decoder(decoder, binary)
 
     def _convert_layered_page(self, page):
-        imgs = []
+        imgs = {}
         layers = page.get_layers()
         for layer in layers:
+            layer_name = layer.get_name()
             binary = layer.get_content()
             if binary is None:
-                imgs.append(None)
+                imgs[layer_name] = None
                 continue
             decoder = self.find_decoder(layer)
-            all_blank = (layer.get_name() == 'BGLAYER' and page.get_style() == 'style_white')
+            all_blank = (layer_name == 'BGLAYER' and page.get_style() == 'style_white')
             img = self._create_image_from_decoder(decoder, binary, blank_hint=all_blank)
-            imgs.append(img)
+            imgs[layer_name] = img
         # flatten background and main layer
-        img_bg = imgs[4]
-        img_main = imgs[0]
+        img_main = imgs['MAINLAYER']
+        img_bg = imgs['BGLAYER']
         img = self._flatten_layers(img_main, img_bg)
-        for i in range(3):  # flatten layer1, layer2, layer3 if any
-            img_layer = imgs[i + 1]
+        # flatten layer1, layer2, layer3 if any
+        visibility = self._get_additional_layers_visibility(page)
+        for name in ['LAYER1', 'LAYER2', 'LAYER3']:
+            is_visible = visibility.get(name)
+            if not is_visible:
+                continue
+            img_layer = imgs.get(name)
             if img_layer is not None:
                 img = self._flatten_layers(img_layer, img)
         return img
@@ -84,6 +92,21 @@ class ImageConverter:
         else:
             img = Image.frombytes('L', size, bitmap)
         return img
+
+    def _get_additional_layers_visibility(self, page):
+        visibility = {}
+        info = page.get_layer_info()
+        if info is None:
+            return visibility
+        info_array = json.loads(info)
+        for layer in info_array:
+            is_bg_layer = layer.get('isBackgroundLayer')
+            if is_bg_layer:
+                continue
+            layer_id = layer.get('layerId')
+            is_visible = layer.get('isVisible')
+            visibility['LAYER' + str(layer_id)] = is_visible
+        return visibility
 
     def find_decoder(self, page):
         """Returns a proper decoder for the given page.

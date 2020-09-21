@@ -184,6 +184,12 @@ class Page:
     def get_style(self):
         return self.metadata.get('PAGESTYLE')
 
+    def get_layer_info(self):
+        info = self.metadata.get('LAYERINFO')
+        if info is None or info == 'none':
+            return None
+        return info.replace('#', ':')
+
 
 class Layer:
     def __init__(self, layer_info):
