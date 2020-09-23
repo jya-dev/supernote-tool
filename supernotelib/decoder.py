@@ -25,7 +25,7 @@ from . import fileformat
 
 class BaseDecoder:
     """Abstract decoder class."""
-    def decode(self, data, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False):
         raise NotImplementedError('subclasses must implement decode method')
 
 
@@ -35,7 +35,7 @@ class FlateDecoder(BaseDecoder):
     INTERNAL_PAGE_WIDTH = 1404
     BIT_PER_PIXEL = 16
 
-    def decode(self, data, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -62,27 +62,17 @@ class FlateDecoder(BaseDecoder):
 
 class RattaRleDecoder(BaseDecoder):
     """Decoder for RATTA_RLE protocol."""
-    BIT_PER_PIXEL = 8
-
     COLORCODE_BLACK = 0x61
     COLORCODE_BACKGROUND = 0x62
     COLORCODE_DARK_GRAY = 0x63
     COLORCODE_GRAY = 0x64
     COLORCODE_WHITE = 0x65
 
-    colormap = {
-        COLORCODE_BLACK: color.BLACK,
-        COLORCODE_BACKGROUND: color.TRANSPARENT,
-        COLORCODE_DARK_GRAY: color.DARK_GRAY,
-        COLORCODE_GRAY: color.GRAY,
-        COLORCODE_WHITE: color.WHITE,
-    }
-
     SPECIAL_LENGTH_MARKER = 0xff
     SPECIAL_LENGTH = 0x4000
     SPECIAL_LENGTH_FOR_BLANK = 0x400
 
-    def decode(self, data, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -99,6 +89,22 @@ class RattaRleDecoder(BaseDecoder):
         int
             bit per pixel
         """
+        if palette is None:
+            palette = color.DEFAULT_COLORPALETTE
+
+        if palette.mode == color.MODE_RGB:
+            bit_per_pixel = 24
+        else:
+            bit_per_pixel = 8
+
+        colormap = {
+            self.COLORCODE_BLACK: palette.black,
+            self.COLORCODE_BACKGROUND: palette.transparent,
+            self.COLORCODE_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_GRAY: palette.gray,
+            self.COLORCODE_WHITE: palette.white,
+        }
+
         uncompressed = bytearray()
         bin = iter(data)
         try:
@@ -138,17 +144,23 @@ class RattaRleDecoder(BaseDecoder):
 
                 while not waiting.empty():
                     (colorcode, length) = waiting.get()
-                    color = self.colormap[colorcode]
-                    uncompressed += bytearray((color,)) * length
+                    uncompressed += self._create_color_bytearray(palette.mode, colormap, colorcode, length)
         except StopIteration:
            if len(holder) > 0:
                 (colorcode, length) = holder
                 length = ((length & 0x7f) + 1) << 3
-                color = self.colormap[colorcode]
-                uncompressed += bytearray((color,)) * length
+                uncompressed += self._create_color_bytearray(palette.mode, colormap, colorcode, length)
 
-        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH
+        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH * int(bit_per_pixel / 8)
         if len(uncompressed) != expected_length:
             raise exceptions.DecoderException(f'uncompressed bitmap length = {len(uncompressed)}, expected = {expected_length}')
 
-        return bytes(uncompressed), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), self.BIT_PER_PIXEL
+        return bytes(uncompressed), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+
+    def _create_color_bytearray(self, mode, colormap, color_code, length):
+        if mode == color.MODE_RGB:
+            r, g, b = color.get_rgb(colormap[color_code])
+            return bytearray((r, g, b,)) * length
+        else:
+            c = colormap[color_code]
+            return bytearray((c,)) * length

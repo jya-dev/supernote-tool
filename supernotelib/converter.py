@@ -25,8 +25,9 @@ from . import fileformat
 
 
 class ImageConverter:
-    def __init__(self, notebook):
+    def __init__(self, notebook, palette=None):
         self.note = notebook
+        self.palette = palette
 
     def convert(self, page_number):
         """Returns an image of the given page.
@@ -43,16 +44,16 @@ class ImageConverter:
         """
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
-            return self._convert_layered_page(page)
+            return self._convert_layered_page(page, self.palette)
         else:
-            return self._convert_nonlayered_page(page)
+            return self._convert_nonlayered_page(page, self.palette)
 
-    def _convert_nonlayered_page(self, page):
+    def _convert_nonlayered_page(self, page, palette=None):
         binary = page.get_content()
         decoder = self.find_decoder(page)
-        return self._create_image_from_decoder(decoder, binary)
+        return self._create_image_from_decoder(decoder, binary,palette=palette)
 
-    def _convert_layered_page(self, page):
+    def _convert_layered_page(self, page, palette=None):
         imgs = {}
         layers = page.get_layers()
         for layer in layers:
@@ -63,7 +64,7 @@ class ImageConverter:
                 continue
             decoder = self.find_decoder(layer)
             all_blank = (layer_name == 'BGLAYER' and page.get_style() == 'style_white')
-            img = self._create_image_from_decoder(decoder, binary, blank_hint=all_blank)
+            img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank)
             imgs[layer_name] = img
         # flatten background and main layer
         img_main = imgs['MAINLAYER']
@@ -85,9 +86,11 @@ class ImageConverter:
         mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
         return Image.composite(fg, bg, mask)
 
-    def _create_image_from_decoder(self, decoder, binary, blank_hint=False):
-        bitmap, size, bpp = decoder.decode(binary, blank_hint)
-        if bpp == 16:
+    def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False):
+        bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint)
+        if bpp == 24:
+            img = Image.frombytes('RGB', size, bitmap)
+        elif bpp == 16:
             img = Image.frombytes('I;16', size, bitmap)
         else:
             img = Image.frombytes('L', size, bitmap)
