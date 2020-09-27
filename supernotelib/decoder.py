@@ -31,9 +31,13 @@ class BaseDecoder:
 
 class FlateDecoder(BaseDecoder):
     """Decoder for SN_ASA_COMPRESS protocol."""
+    COLORCODE_BLACK = 0x0000
+    COLORCODE_BACKGROUND = 0xffff
+    COLORCODE_DARK_GRAY = 0x2104
+    COLORCODE_GRAY = 0xe1e2
+
     INTERNAL_PAGE_HEIGHT = 1888
     INTERNAL_PAGE_WIDTH = 1404
-    BIT_PER_PIXEL = 16
 
     def decode(self, data, palette=None, all_blank=False):
         """Uncompress bitmap data.
@@ -57,7 +61,26 @@ class FlateDecoder(BaseDecoder):
         bitmap = np.reshape(bitmap, (self.INTERNAL_PAGE_WIDTH, self.INTERNAL_PAGE_HEIGHT))
         bitmap = np.rot90(bitmap, -1) # rotate 90 degrees clockwise
         bitmap = np.delete(bitmap, slice(-16, None), axis=0) # delete bottom 16 lines
-        return bitmap.tobytes(), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), self.BIT_PER_PIXEL
+
+        # change colors
+        if palette is None:
+            palette = color.DEFAULT_COLORPALETTE
+        if palette.mode == color.MODE_RGB:
+            bit_per_pixel = 32
+            bitmap = bitmap.astype('>u4')
+            alpha = 0xff
+            bitmap[bitmap == self.COLORCODE_BLACK] = (palette.black << 8) | alpha
+            bitmap[bitmap == self.COLORCODE_DARK_GRAY] = (palette.darkgray << 8) | alpha
+            bitmap[bitmap == self.COLORCODE_GRAY] = (palette.gray << 8) | alpha
+            bitmap[bitmap == self.COLORCODE_BACKGROUND] = (palette.white << 8) | alpha
+        else:
+            bit_per_pixel = 8
+            bitmap[bitmap == self.COLORCODE_BLACK] = palette.black
+            bitmap[bitmap == self.COLORCODE_DARK_GRAY] = palette.darkgray
+            bitmap[bitmap == self.COLORCODE_GRAY] = palette.gray
+            bitmap[bitmap == self.COLORCODE_BACKGROUND] = palette.white
+            bitmap = bitmap.astype(np.uint8)
+        return bitmap.tobytes(), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
 
 
 class RattaRleDecoder(BaseDecoder):

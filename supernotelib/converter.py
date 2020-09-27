@@ -88,7 +88,9 @@ class ImageConverter:
 
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False):
         bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint)
-        if bpp == 24:
+        if bpp == 32:
+            img = Image.frombytes('RGBA', size, bitmap)
+        elif bpp == 24:
             img = Image.frombytes('RGB', size, bitmap)
         elif bpp == 16:
             img = Image.frombytes('I;16', size, bitmap)
