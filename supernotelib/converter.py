@@ -72,7 +72,9 @@ class ImageConverter:
         img = self._flatten_layers(img_main, img_bg)
         # flatten layer1, layer2, layer3 if any
         visibility = self._get_additional_layers_visibility(page)
-        for name in ['LAYER1', 'LAYER2', 'LAYER3']:
+        layer_order = page.get_layer_order()
+        layer_order.remove('MAINLAYER')
+        for name in reversed(layer_order):
             is_visible = visibility.get(name)
             if not is_visible:
                 continue

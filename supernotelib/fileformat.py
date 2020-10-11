@@ -190,6 +190,13 @@ class Page:
             return None
         return info.replace('#', ':')
 
+    def get_layer_order(self):
+        seq = self.metadata.get('LAYERSEQ')
+        if seq is None:
+            return []
+        order = seq.split(',')
+        return order
+
 
 class Layer:
     def __init__(self, layer_info):
