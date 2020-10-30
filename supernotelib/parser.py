@@ -297,7 +297,8 @@ class SupernoteXParser(SupernoteParser):
     """Parser for Supernote X-series."""
     SN_SIGNATURES = [
         'noteSN_FILE_VER_20200001', # Firmware version C.053
-        'noteSN_FILE_VER_20200005'  # Firmware version C.077
+        'noteSN_FILE_VER_20200005', # Firmware version C.077
+        'noteSN_FILE_VER_20200006'  # Firmware version C.130
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 
