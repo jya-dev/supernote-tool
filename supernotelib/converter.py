@@ -19,7 +19,7 @@ import json
 from PIL import Image
 
 from . import color
-from . import decoder
+from . import decoder as Decoder
 from . import exceptions
 from . import fileformat
 
@@ -63,7 +63,11 @@ class ImageConverter:
                 imgs[layer_name] = None
                 continue
             decoder = self.find_decoder(layer)
-            all_blank = (layer_name == 'BGLAYER' and page.get_style() == 'style_white')
+            page_style = page.get_style()
+            all_blank = (layer_name == 'BGLAYER' and page_style is not None and page_style == 'style_white')
+            custom_bg = (layer_name == 'BGLAYER' and page_style is not None and page_style.startswith('user_'))
+            if custom_bg:
+                decoder = Decoder.PngDecoder()
             img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank)
             imgs[layer_name] = img
         # flatten background and main layer
@@ -130,8 +134,8 @@ class ImageConverter:
         """
         protocol = page.get_protocol()
         if protocol == 'SN_ASA_COMPRESS':
-            return decoder.FlateDecoder()
+            return Decoder.FlateDecoder()
         elif protocol == 'RATTA_RLE':
-            return decoder.RattaRleDecoder()
+            return Decoder.RattaRleDecoder()
         else:
             raise exceptions.UnknownDecodeProtocol(f'unknown decode protocol: {protocol}')

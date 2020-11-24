@@ -15,6 +15,7 @@
 """Decoder classes."""
 
 import numpy as np
+import png
 import queue
 import zlib
 
@@ -187,3 +188,37 @@ class RattaRleDecoder(BaseDecoder):
         else:
             c = colormap[color_code]
             return bytearray((c,)) * length
+
+
+class PngDecoder(BaseDecoder):
+    """Decoder for PNG."""
+
+    def decode(self, data, palette=None, all_blank=False):
+        """Uncompress bitmap data.
+
+        Parameters
+        ----------
+        data : bytes
+            png data
+
+        Returns
+        -------
+        bytes
+            uncompressed bitmap data
+        tuple(int, int)
+            bitmap size (width, height)
+        int
+            bit per pixel
+        """
+        r = png.Reader(bytes=data)
+        (width, height, rows, info) = r.read_flat()
+        if width != fileformat.PAGE_WIDTH or height != fileformat.PAGE_HEIGHT:
+            raise exceptions.DecoderException(f'invalid size = ({width}, {height}), expected = ({fileformat.PAGE_WIDTH}, {fileformat.PAGE_HEIGHT})')
+        depth = info['bitdepth']
+        greyscale = info['greyscale']
+        alpha = info['alpha']
+        ch = 1 if greyscale else 3
+        if alpha:
+            ch = ch + 1
+        bit_per_pixel = depth * ch
+        return bytes(rows), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
