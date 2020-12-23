@@ -140,7 +140,7 @@ class SupernoteParser:
             # parse footer block
             f.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
             footer_address = int.from_bytes(f.read(fileformat.ADDRESS_SIZE), 'little')
-            footer = self._parse_metadata_block(f, footer_address)
+            footer = self._parse_footer_block(f, footer_address)
             # parse header block
             header_address = self._get_header_address(footer)
             header = self._parse_metadata_block(f, header_address)
@@ -177,6 +177,9 @@ class SupernoteParser:
             if signature == sig:
                 return signature
         return None
+
+    def _parse_footer_block(self, fobj, address):
+        return self._parse_metadata_block(fobj, address)
 
     def _get_header_address(self, footer):
         """Returns header address.
@@ -302,6 +305,36 @@ class SupernoteXParser(SupernoteParser):
         'noteSN_FILE_VER_20200007'  # Firmware version C.159
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
+
+    def _parse_footer_block(self, fobj, address):
+        footer = super()._parse_metadata_block(fobj, address)
+        # parse keywords
+        keyword_addresses = self._get_keyword_addresses(footer)
+        keywords = list(map(lambda addr: self._parse_keyword_block(fobj, addr), keyword_addresses))
+        if keywords:
+            footer[fileformat.KEY_KEYWORDS] = keywords
+        # parse titles
+        title_addresses = self._get_title_addresses(footer)
+        titles = list(map(lambda addr: self._parse_title_block(fobj, addr), title_addresses))
+        if titles:
+            footer[fileformat.KEY_TITLES] = titles
+        return footer
+
+    def _get_keyword_addresses(self, footer):
+        keyword_keys = filter(lambda k : k.startswith('KEYWORD_'), footer.keys())
+        keyword_addresses = list(map(lambda k: int(footer[k]), keyword_keys))
+        return keyword_addresses
+
+    def _parse_keyword_block(self, fobj, address):
+        return self._parse_metadata_block(fobj, address)
+
+    def _get_title_addresses(self, footer):
+        title_keys = filter(lambda k : k.startswith('TITLE_'), footer.keys())
+        title_addresses = list(map(lambda k: int(footer[k]), title_keys))
+        return title_addresses
+
+    def _parse_title_block(self, fobj, address):
+        return self._parse_metadata_block(fobj, address)
 
     def _get_page_addresses(self, footer):
         """Returns list of page addresses.

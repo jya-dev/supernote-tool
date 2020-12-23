@@ -32,6 +32,8 @@ KEY_HEADER = '__header__'
 KEY_FOOTER = '__footer__'
 KEY_PAGES = '__pages__'
 KEY_LAYERS = '__layers__'
+KEY_KEYWORDS = '__keywords__'
+KEY_TITLES = '__titles__'
 
 
 class SupernoteMetadata:
