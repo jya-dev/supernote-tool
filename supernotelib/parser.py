@@ -322,7 +322,12 @@ class SupernoteXParser(SupernoteParser):
 
     def _get_keyword_addresses(self, footer):
         keyword_keys = filter(lambda k : k.startswith('KEYWORD_'), footer.keys())
-        keyword_addresses = list(map(lambda k: int(footer[k]), keyword_keys))
+        keyword_addresses = []
+        for k in keyword_keys:
+            if type(footer[k]) == list:
+                keyword_addresses.extend(list(map(int, footer[k])))
+            else:
+                keyword_addresses.append(int(footer[k]))
         return keyword_addresses
 
     def _parse_keyword_block(self, fobj, address):
@@ -330,7 +335,12 @@ class SupernoteXParser(SupernoteParser):
 
     def _get_title_addresses(self, footer):
         title_keys = filter(lambda k : k.startswith('TITLE_'), footer.keys())
-        title_addresses = list(map(lambda k: int(footer[k]), title_keys))
+        title_addresses = []
+        for k in title_keys:
+            if type(footer[k]) == list:
+                title_addresses.extend(list(map(int, footer[k])))
+            else:
+                title_addresses.append(int(footer[k]))
         return title_addresses
 
     def _parse_title_block(self, fobj, address):
