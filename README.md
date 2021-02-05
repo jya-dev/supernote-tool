@@ -55,7 +55,8 @@ $ python supernote-tool.py analyze your.note
 ## Supporting files
 
 * `*.note` file created on Supernote A5 (Firmware SN100.B000.386_release)
-* `*.note` file created on Supernote A6 X (Firmware C.133)
+* `*.note` file created on Supernote A6 X (Firmware C.237)
+* `*.note` file created on Supernote A5 X (Firmware C.237)
 
 
 ## License
