@@ -91,6 +91,9 @@ class RattaRleDecoder(BaseDecoder):
     COLORCODE_DARK_GRAY = 0x63
     COLORCODE_GRAY = 0x64
     COLORCODE_WHITE = 0x65
+    COLORCODE_MARKER_BLACK = 0x66
+    COLORCODE_MARKER_DARK_GRAY = 0x67
+    COLORCODE_MARKER_GRAY = 0x68
 
     SPECIAL_LENGTH_MARKER = 0xff
     SPECIAL_LENGTH = 0x4000
@@ -127,6 +130,9 @@ class RattaRleDecoder(BaseDecoder):
             self.COLORCODE_DARK_GRAY: palette.darkgray,
             self.COLORCODE_GRAY: palette.gray,
             self.COLORCODE_WHITE: palette.white,
+            self.COLORCODE_MARKER_BLACK: palette.black,
+            self.COLORCODE_MARKER_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_MARKER_GRAY: palette.gray,
         }
 
         uncompressed = bytearray()
