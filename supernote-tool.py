@@ -23,6 +23,15 @@ from colour import Color
 import supernotelib as sn
 
 
+def convert_all(converter, total, file_name, save_func):
+    basename, extension = os.path.splitext(file_name)
+    max_digits = len(str(total))
+    for i in range(total):
+        # append page number between filename and extention
+        numbered_filename = basename + '_' + str(i).zfill(max_digits) + extension
+        img = converter.convert(i)
+        save_func(img, numbered_filename)
+
 def subcommand_analyze(args):
     # show all metadata as JSON
     metadata = sn.parse_metadata(args.input)
@@ -30,6 +39,7 @@ def subcommand_analyze(args):
 
 def subcommand_convert(args):
     notebook = sn.load_notebook(args.input)
+    total = notebook.get_total_pages()
     palette = None
     if args.color:
         try:
@@ -38,19 +48,28 @@ def subcommand_convert(args):
             print(e, file=sys.stderr)
             sys.exit(1)
         palette = sn.color.ColorPalette(sn.color.MODE_RGB, colors)
-    converter = sn.converter.ImageConverter(notebook, palette=palette)
-    if args.all:
-        basename, extension = os.path.splitext(args.output)
-        total = notebook.get_total_pages()
-        max_digits = len(str(total))
-        for i in range(total):
-            # append page number between filename and extension
-            numbered_filename = basename + '_' + str(i).zfill(max_digits) + extension
-            img = converter.convert(i)
-            img.save(numbered_filename)
-    else:
-        img = converter.convert(args.number)
-        img.save(args.output)
+    if args.type == 'bitmap':
+        converter = sn.converter.ImageConverter(notebook, palette=palette)
+        def save(img, file_name):
+            img.save(file_name)
+        if args.all:
+            convert_all(converter, total, args.output, save)
+        else:
+            img = converter.convert(args.number)
+            save(img, args.output)
+    elif args.type == 'vector':
+        converter = sn.converter.SvgConverter(notebook, palette=palette)
+        def save(svg, file_name):
+            if svg is not None:
+                with open(file_name, 'w') as f:
+                    f.write(svg)
+            else:
+                print('no path data')
+        if args.all:
+            convert_all(converter, total, args.output, save)
+        else:
+            svg = converter.convert(args.number)
+            save(svg, args.output)
 
 def parse_color(color_string):
     colorcodes = color_string.split(',')
@@ -79,6 +98,7 @@ if __name__ == '__main__':
     parser_convert.add_argument('-n', '--number', type=int, default=0, help='page number to be converted')
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
+    parser_convert.add_argument('-t', '--type', choices=['bitmap', 'vector'], default='bitmap', help='select conversion target type')
     parser_convert.set_defaults(handler=subcommand_convert)
 
     args = parser.parse_args()

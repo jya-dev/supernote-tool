@@ -15,6 +15,8 @@
 """Converter classes."""
 
 import json
+import potrace
+import svgwrite
 
 from PIL import Image
 
@@ -139,3 +141,53 @@ class ImageConverter:
             return Decoder.RattaRleDecoder()
         else:
             raise exceptions.UnknownDecodeProtocol(f'unknown decode protocol: {protocol}')
+
+
+class SvgConverter:
+    def __init__(self, notebook, palette=None):
+        self.note = notebook
+        self.palette = palette
+        self.image_converter = ImageConverter(notebook, palette=None)
+
+    def convert(self, page_number):
+        """Returns SVG string of the given page.
+
+        Parameters
+        ----------
+        page_number : int
+            page number to convert
+
+        Returns
+        -------
+        string
+            an SVG string
+        """
+        dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT))
+
+        img = self.image_converter.convert(page_number)
+        # TODO: split into each colors
+
+        # create a bitmap from the array
+        bmp = potrace.Bitmap(img)
+
+        # trace the bitmap to a path
+        path = bmp.trace()
+        # iterate over path curves
+        if len(path) > 0:
+            svgpath = dwg.path(fill="black") # TODO: make color selectable
+            for curve in path:
+                start = curve.start_point
+                svgpath.push("M", start.x, start.y)
+                for segment in curve:
+                    end = segment.end_point
+                    if segment.is_corner:
+                        c = segment.c
+                        svgpath.push("L", c.x, c.y)
+                        svgpath.push("L", end.x, end.y)
+                    else:
+                        c1 = segment.c1
+                        c2 = segment.c2
+                        svgpath.push("C", c1.x, c1.y, c2.x, c2.y, end.x, end.y)
+                svgpath.push("Z")
+            dwg.add(svgpath)
+        return dwg.tostring()

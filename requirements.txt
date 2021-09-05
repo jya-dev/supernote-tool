@@ -1,4 +1,6 @@
 colour==0.1.5
 numpy==1.19.0
 Pillow==7.2.0
+potracer==0.0.1
 pypng==0.0.20
+svgwrite==1.4
