@@ -14,9 +14,13 @@
 
 """Converter classes."""
 
+import base64
 import json
 import potrace
 import svgwrite
+
+from enum import Enum, auto
+from io import BytesIO
 
 from PIL import Image
 
@@ -26,12 +30,18 @@ from . import exceptions
 from . import fileformat
 
 
+class VisibilityOverlay(Enum):
+    DEFAULT = auto()
+    VISIBLE = auto()
+    INVISIBLE = auto()
+
+
 class ImageConverter:
     def __init__(self, notebook, palette=None):
         self.note = notebook
         self.palette = palette
 
-    def convert(self, page_number, ignore_background=False):
+    def convert(self, page_number, visibility_overlay=None):
         """Returns an image of the given page.
 
         Parameters
@@ -46,16 +56,16 @@ class ImageConverter:
         """
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
-            return self._convert_layered_page(page, self.palette, ignore_background)
+            return self._convert_layered_page(page, self.palette, visibility_overlay)
         else:
-            return self._convert_nonlayered_page(page, self.palette, ignore_background)
+            return self._convert_nonlayered_page(page, self.palette, visibility_overlay)
 
-    def _convert_nonlayered_page(self, page, palette=None, ignore_background=False):
+    def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None):
         binary = page.get_content()
         decoder = self.find_decoder(page)
         return self._create_image_from_decoder(decoder, binary,palette=palette)
 
-    def _convert_layered_page(self, page, palette=None, ignore_background=False):
+    def _convert_layered_page(self, page, palette=None, visibility_overlay=None):
         imgs = {}
         layers = page.get_layers()
         for layer in layers:
@@ -72,30 +82,30 @@ class ImageConverter:
                 decoder = Decoder.PngDecoder()
             img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank)
             imgs[layer_name] = img
-        # flatten background and main layer
-        img_main = imgs['MAINLAYER']
-        if ignore_background:
-            img = img_main
-        else:
-            img_bg = imgs['BGLAYER']
-            img = self._flatten_layers(img_main, img_bg)
-        # flatten layer1, layer2, layer3 if any
-        visibility = self._get_additional_layers_visibility(page)
+        return self._flatten_layers(page, imgs, visibility_overlay)
+
+    def _flatten_layers(self, page, imgs, visibility_overlay=None):
+        """flatten all layers if any"""
+        def flatten(fg, bg):
+            mask = fg.copy().convert('L')
+            mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
+            return Image.composite(fg, bg, mask)
+        flatten_img = Image.new(imgs['BGLAYER'].mode, (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.TRANSPARENT)
+        visibility = self._get_layer_visibility(page)
         layer_order = page.get_layer_order()
-        layer_order.remove('MAINLAYER')
         for name in reversed(layer_order):
             is_visible = visibility.get(name)
-            if not is_visible:
-                continue
+            if visibility_overlay is not None:
+                overlay = visibility_overlay.get(name)
+                if overlay == VisibilityOverlay.INVISIBLE or (overlay == VisibilityOverlay.DEFAULT and not is_visible):
+                    continue
+            else:
+                if not is_visible:
+                    continue
             img_layer = imgs.get(name)
             if img_layer is not None:
-                img = self._flatten_layers(img_layer, img)
-        return img
-
-    def _flatten_layers(self, fg, bg):
-        mask = fg.copy().convert('L')
-        mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
-        return Image.composite(fg, bg, mask)
+                flatten_img = flatten(img_layer, flatten_img)
+        return flatten_img
 
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False):
         bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint)
@@ -109,7 +119,7 @@ class ImageConverter:
             img = Image.frombytes('L', size, bitmap)
         return img
 
-    def _get_additional_layers_visibility(self, page):
+    def _get_layer_visibility(self, page):
         visibility = {}
         info = page.get_layer_info()
         if info is None:
@@ -117,11 +127,14 @@ class ImageConverter:
         info_array = json.loads(info)
         for layer in info_array:
             is_bg_layer = layer.get('isBackgroundLayer')
-            if is_bg_layer:
-                continue
             layer_id = layer.get('layerId')
             is_visible = layer.get('isVisible')
-            visibility['LAYER' + str(layer_id)] = is_visible
+            if is_bg_layer:
+                visibility['BGLAYER'] = is_visible
+            elif layer_id == 0:
+                visibility['MAINLAYER'] = is_visible
+            else:
+                visibility['LAYER' + str(layer_id)] = is_visible
         return visibility
 
     def find_decoder(self, page):
@@ -145,6 +158,21 @@ class ImageConverter:
         else:
             raise exceptions.UnknownDecodeProtocol(f'unknown decode protocol: {protocol}')
 
+    @staticmethod
+    def build_visibility_overlay(
+            background=VisibilityOverlay.DEFAULT,
+            main=VisibilityOverlay.DEFAULT,
+            layer1=VisibilityOverlay.DEFAULT,
+            layer2=VisibilityOverlay.DEFAULT,
+            layer3=VisibilityOverlay.DEFAULT):
+        return {
+            'BGLAYER': background,
+            'MAINLAYER': main,
+            'LAYER1': layer1,
+            'LAYER2': layer2,
+            'LAYER3': layer3,
+        }
+
 
 class SvgConverter:
     def __init__(self, notebook, palette=None):
@@ -166,7 +194,20 @@ class SvgConverter:
         """
         dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT))
 
-        img = self.image_converter.convert(page_number, ignore_background=True)
+        vo_only_bg = ImageConverter.build_visibility_overlay(
+            background=VisibilityOverlay.VISIBLE,
+            main=VisibilityOverlay.INVISIBLE,
+            layer1=VisibilityOverlay.INVISIBLE,
+            layer2=VisibilityOverlay.INVISIBLE,
+            layer3=VisibilityOverlay.INVISIBLE)
+        bg_img = self.image_converter.convert(page_number, visibility_overlay=vo_only_bg)
+        buffer = BytesIO()
+        bg_img.save(buffer, format='png')
+        bg_b64str = base64.b64encode(buffer.getvalue()).decode('ascii')
+        dwg.add(dwg.image('data:image/png;base64,' + bg_b64str, insert=(0, 0), size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)))
+
+        vo_except_bg = ImageConverter.build_visibility_overlay(background=VisibilityOverlay.INVISIBLE)
+        img = self.image_converter.convert(page_number, visibility_overlay=vo_except_bg)
 
         def generate_color_mask(img, c):
             mask = img.copy().convert('L')
