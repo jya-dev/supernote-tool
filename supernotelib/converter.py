@@ -31,7 +31,7 @@ class ImageConverter:
         self.note = notebook
         self.palette = palette
 
-    def convert(self, page_number):
+    def convert(self, page_number, ignore_background=False):
         """Returns an image of the given page.
 
         Parameters
@@ -46,16 +46,16 @@ class ImageConverter:
         """
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
-            return self._convert_layered_page(page, self.palette)
+            return self._convert_layered_page(page, self.palette, ignore_background)
         else:
-            return self._convert_nonlayered_page(page, self.palette)
+            return self._convert_nonlayered_page(page, self.palette, ignore_background)
 
-    def _convert_nonlayered_page(self, page, palette=None):
+    def _convert_nonlayered_page(self, page, palette=None, ignore_background=False):
         binary = page.get_content()
         decoder = self.find_decoder(page)
         return self._create_image_from_decoder(decoder, binary,palette=palette)
 
-    def _convert_layered_page(self, page, palette=None):
+    def _convert_layered_page(self, page, palette=None, ignore_background=False):
         imgs = {}
         layers = page.get_layers()
         for layer in layers:
@@ -74,8 +74,11 @@ class ImageConverter:
             imgs[layer_name] = img
         # flatten background and main layer
         img_main = imgs['MAINLAYER']
-        img_bg = imgs['BGLAYER']
-        img = self._flatten_layers(img_main, img_bg)
+        if ignore_background:
+            img = img_main
+        else:
+            img_bg = imgs['BGLAYER']
+            img = self._flatten_layers(img_main, img_bg)
         # flatten layer1, layer2, layer3 if any
         visibility = self._get_additional_layers_visibility(page)
         layer_order = page.get_layer_order()
@@ -164,7 +167,7 @@ class SvgConverter:
         """
         dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT))
 
-        img = self.image_converter.convert(page_number)
+        img = self.image_converter.convert(page_number, ignore_background=True)
         # TODO: split into each colors
 
         # create a bitmap from the array
