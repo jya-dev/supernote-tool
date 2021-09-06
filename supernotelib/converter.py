@@ -62,8 +62,10 @@ class ImageConverter:
 
     def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None):
         binary = page.get_content()
+        if binary is None:
+            return Image.new('L', (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.TRANSPARENT)
         decoder = self.find_decoder(page)
-        return self._create_image_from_decoder(decoder, binary,palette=palette)
+        return self._create_image_from_decoder(decoder, binary, palette=palette)
 
     def _convert_layered_page(self, page, palette=None, visibility_overlay=None):
         imgs = {}
