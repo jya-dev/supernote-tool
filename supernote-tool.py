@@ -48,16 +48,16 @@ def subcommand_convert(args):
             print(e, file=sys.stderr)
             sys.exit(1)
         palette = sn.color.ColorPalette(sn.color.MODE_RGB, colors)
-    if args.type == 'bitmap':
+    if args.type == 'png':
         converter = sn.converter.ImageConverter(notebook, palette=palette)
         def save(img, file_name):
-            img.save(file_name)
+            img.save(file_name, format='PNG')
         if args.all:
             convert_all(converter, total, args.output, save)
         else:
             img = converter.convert(args.number)
             save(img, args.output)
-    elif args.type == 'vector':
+    elif args.type == 'svg':
         converter = sn.converter.SvgConverter(notebook, palette=palette)
         def save(svg, file_name):
             if svg is not None:
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser_convert.add_argument('-n', '--number', type=int, default=0, help='page number to be converted')
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
-    parser_convert.add_argument('-t', '--type', choices=['bitmap', 'vector'], default='bitmap', help='select conversion target type')
+    parser_convert.add_argument('-t', '--type', choices=['png', 'svg'], default='png', help='select conversion file type')
     parser_convert.set_defaults(handler=subcommand_convert)
 
     args = parser.parse_args()
