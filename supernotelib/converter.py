@@ -130,13 +130,17 @@ class ImageConverter:
         for layer in info_array:
             is_bg_layer = layer.get('isBackgroundLayer')
             layer_id = layer.get('layerId')
+            is_main_layer = (layer_id == 0) and (not is_bg_layer)
             is_visible = layer.get('isVisible')
             if is_bg_layer:
                 visibility['BGLAYER'] = is_visible
-            elif layer_id == 0:
+            elif is_main_layer:
                 visibility['MAINLAYER'] = is_visible
             else:
                 visibility['LAYER' + str(layer_id)] = is_visible
+        # some old files don't include MAINLAYER info, so we set MAINLAYER visible
+        if visibility.get('MAINLAYER') is None:
+            visibility['MAINLAYER'] = True
         return visibility
 
     def find_decoder(self, page):
