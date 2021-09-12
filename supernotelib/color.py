@@ -39,6 +39,13 @@ def get_rgb(value):
     b = value & 0x0000ff
     return (r, g, b)
 
+def web_string(value, mode=MODE_RGB):
+    if mode == MODE_GRAYSCALE:
+        return '#' + (format(value & 0xff, '02x') * 3)
+    else:
+        r, g, b = get_rgb(value)
+        return '#' + format(r & 0xff, '02x') + format(g & 0xff, '02x') + format(b & 0xff, '02x')
+
 
 class ColorPalette:
     def __init__(self, mode=MODE_GRAYSCALE, colors=(BLACK, DARK_GRAY, GRAY, WHITE)):

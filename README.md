@@ -45,6 +45,12 @@ To convert black into red:
 $ python supernote-tool.py convert -c "#ff0000,#9d9d9d,#c9c9c9,#fefefe" your.note output.png
 ```
 
+To convert SVG file format:
+
+```
+$ python supernote-tool.py convert -t svg your.note output.svg
+```
+
 For developers, dump note metadata as JSON format:
 
 ```
