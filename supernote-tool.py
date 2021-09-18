@@ -71,6 +71,7 @@ def subcommand_convert(args):
             svg = converter.convert(args.number)
             save(svg, args.output)
     elif args.type == 'pdf':
+        vectorize = args.pdf_type == 'vector'
         converter = sn.converter.PdfConverter(notebook, palette=palette)
         def save(data, file_name):
             if data is not None:
@@ -79,10 +80,10 @@ def subcommand_convert(args):
             else:
                 print('no data')
         if args.all:
-            data = converter.convert(-1) # minus value means converting all pages
+            data = converter.convert(-1, vectorize) # minus value means converting all pages
             save(data, args.output)
         else:
-            data = converter.convert(args.number)
+            data = converter.convert(args.number, vectorize)
             save(data, args.output)
 
 def parse_color(color_string):
@@ -113,6 +114,7 @@ if __name__ == '__main__':
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
     parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf'], default='png', help='select conversion file type')
+    parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.set_defaults(handler=subcommand_convert)
 
     args = parser.parse_args()
