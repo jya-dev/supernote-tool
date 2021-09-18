@@ -97,7 +97,7 @@ class ImageConverter:
             mask = fg.copy().convert('L')
             mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
             return Image.composite(fg, bg, mask)
-        flatten_img = Image.new(imgs['BGLAYER'].mode, (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.TRANSPARENT)
+        flatten_img = Image.new(imgs['BGLAYER'].mode, (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.RGB_TRANSPARENT)
         visibility = self._get_layer_visibility(page)
         layer_order = page.get_layer_order()
         for name in reversed(layer_order):
