@@ -24,6 +24,11 @@ from io import BytesIO
 
 from PIL import Image
 
+from svglib.svglib import svg2rlg
+from reportlab.lib.pagesizes import A4, portrait
+from reportlab.graphics import renderPDF
+from reportlab.pdfgen import canvas
+
 from . import color
 from . import decoder as Decoder
 from . import exceptions
@@ -248,3 +253,61 @@ class SvgConverter:
                     svgpath.push("Z")
                 dwg.add(svgpath)
         return dwg.tostring()
+
+
+class PdfConverter:
+    def __init__(self, notebook, palette=None):
+        self.note = notebook
+        self.palette = palette
+
+    def convert(self, page_number, vectorize=False):
+        """Returns PDF data of the given page.
+
+        Parameters
+        ----------
+        page_number : int
+            page number to convert
+        vectorize : bool
+            convert handwriting to vector
+
+        Returns
+        -------
+        data : bytes
+            bytes of PDF data
+        """
+        buf = BytesIO()
+        if vectorize:
+            converter = SvgConverter(self.note, self.palette)
+            svglist = []
+            if page_number < 0:
+                # convert all pages
+                total = self.note.get_total_pages()
+                for i in range(total):
+                    svg = converter.convert(i)
+                    svglist.append(svg)
+            else:
+                svg = converter.convert(page_number)
+                svglist.append(svg)
+            (w, h) = A4
+            c = canvas.Canvas(buf, pagesize=portrait(A4))
+            for svg in svglist:
+                drawing = svg2rlg(BytesIO(bytes(svg, 'ascii')))
+                (scale_x, scale_y) = (w / drawing.width, h / drawing.height)
+                drawing.scale(scale_x, scale_y)
+                renderPDF.draw(drawing, c, 0, 0)
+                c.showPage()
+            c.save()
+        else:
+            converter = ImageConverter(self.note, self.palette)
+            if page_number < 0:
+                # convert all pages
+                imglist = []
+                total = self.note.get_total_pages()
+                for i in range(total):
+                    img = converter.convert(i)
+                    imglist.append(img.convert('RGB'))
+                imglist[0].save(buf, format='PDF', save_all=True, append_images=imglist[1:])
+            else:
+                img = converter.convert(page_number)
+                img.save(buf, format='PDF')
+        return buf.getvalue()
