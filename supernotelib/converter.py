@@ -248,3 +248,38 @@ class SvgConverter:
                     svgpath.push("Z")
                 dwg.add(svgpath)
         return dwg.tostring()
+
+
+class PdfConverter:
+    def __init__(self, notebook, palette=None):
+        self.note = notebook
+        self.palette = palette
+
+    def convert(self, page_number):
+        """Returns PDF data of the given page.
+
+        Parameters
+        ----------
+        page_number : int
+            page number to convert
+
+        Returns
+        -------
+        data : bytes
+            bytes of PDF data
+        """
+        converter = ImageConverter(self.note, self.palette)
+        if page_number < 0:
+            # convert all pages
+            imglist = []
+            total = self.note.get_total_pages()
+            for i in range(total):
+                img = converter.convert(i)
+                imglist.append(img.convert('RGB'))
+            buf = BytesIO()
+            imglist[0].save(buf, format='PDF', save_all=True, append_images=imglist[1:])
+        else:
+            img = converter.convert(page_number)
+            buf = BytesIO()
+            img.save(buf, format='PDF')
+        return buf.getvalue()
