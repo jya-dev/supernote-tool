@@ -45,10 +45,23 @@ To convert black into red:
 $ python supernote-tool.py convert -c "#ff0000,#9d9d9d,#c9c9c9,#fefefe" your.note output.png
 ```
 
-To convert SVG file format:
+To convert into SVG file format:
 
 ```
 $ python supernote-tool.py convert -t svg your.note output.svg
+```
+
+To convert all pages into PDF file format:
+
+```
+$ python supernote-tool.py convert -t pdf -a your.note output.pdf
+```
+
+You can also convert your handwriting to vector format and save it as PDF with `--pdf-type vector` option.
+Note that converting to a vector takes time.
+
+```
+$ python supernote-tool.py convert -t pdf --pdf-type vector -a your.note output.pdf
 ```
 
 For developers, dump note metadata as JSON format:
