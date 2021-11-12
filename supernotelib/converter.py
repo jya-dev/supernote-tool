@@ -73,10 +73,16 @@ class ImageConverter:
         return self._create_image_from_decoder(decoder, binary, palette=palette)
 
     def _convert_layered_page(self, page, palette=None, visibility_overlay=None):
+        visited_mainlayer = False # workaround for dulicated layer name
         imgs = {}
         layers = page.get_layers()
         for layer in layers:
             layer_name = layer.get_name()
+            if visited_mainlayer and layer_name == 'MAINLAYER':
+                # this layer has duplicated name, so we guess this layer is BGLAYER
+                layer_name = 'BGLAYER'
+            elif layer_name == 'MAINLAYER':
+                visited_mainlayer = True
             binary = layer.get_content()
             if binary is None:
                 imgs[layer_name] = None
@@ -97,7 +103,7 @@ class ImageConverter:
             mask = fg.copy().convert('L')
             mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
             return Image.composite(fg, bg, mask)
-        flatten_img = Image.new(imgs['BGLAYER'].mode, (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.RGB_TRANSPARENT)
+        flatten_img = Image.new('RGB', (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.RGB_TRANSPARENT)
         visibility = self._get_layer_visibility(page)
         layer_order = page.get_layer_order()
         for name in reversed(layer_order):
@@ -120,6 +126,8 @@ class ImageConverter:
             img = Image.frombytes('RGBA', size, bitmap)
         elif bpp == 24:
             img = Image.frombytes('RGB', size, bitmap)
+        elif bpp == 16 and isinstance(decoder, Decoder.PngDecoder):
+            img = Image.frombytes('LA', size, bitmap)
         elif bpp == 16:
             img = Image.frombytes('I;16', size, bitmap)
         else:
