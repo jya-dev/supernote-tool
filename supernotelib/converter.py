@@ -73,10 +73,16 @@ class ImageConverter:
         return self._create_image_from_decoder(decoder, binary, palette=palette)
 
     def _convert_layered_page(self, page, palette=None, visibility_overlay=None):
+        visited_mainlayer = False # workaround for dulicated layer name
         imgs = {}
         layers = page.get_layers()
         for layer in layers:
             layer_name = layer.get_name()
+            if visited_mainlayer and layer_name == 'MAINLAYER':
+                # this layer has duplicated name, so we guess this layer is BGLAYER
+                layer_name = 'BGLAYER'
+            elif layer_name == 'MAINLAYER':
+                visited_mainlayer = True
             binary = layer.get_content()
             if binary is None:
                 imgs[layer_name] = None
