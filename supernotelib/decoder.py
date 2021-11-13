@@ -135,6 +135,8 @@ class RattaRleDecoder(BaseDecoder):
             self.COLORCODE_MARKER_GRAY: palette.gray,
         }
 
+        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH * int(bit_per_pixel / 8)
+
         uncompressed = bytearray()
         bin = iter(data)
         try:
@@ -176,12 +178,12 @@ class RattaRleDecoder(BaseDecoder):
                     (colorcode, length) = waiting.get()
                     uncompressed += self._create_color_bytearray(palette.mode, colormap, colorcode, length)
         except StopIteration:
-           if len(holder) > 0:
+            if len(holder) > 0:
                 (colorcode, length) = holder
-                length = ((length & 0x7f) + 1) << 3
-                uncompressed += self._create_color_bytearray(palette.mode, colormap, colorcode, length)
+                length = self._adjust_tail_length(length, len(uncompressed), expected_length)
+                if length > 0:
+                    uncompressed += self._create_color_bytearray(palette.mode, colormap, colorcode, length)
 
-        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH * int(bit_per_pixel / 8)
         if len(uncompressed) != expected_length:
             raise exceptions.DecoderException(f'uncompressed bitmap length = {len(uncompressed)}, expected = {expected_length}')
 
@@ -195,6 +197,13 @@ class RattaRleDecoder(BaseDecoder):
             c = colormap[color_code]
             return bytearray((c,)) * length
 
+    def _adjust_tail_length(self, tail_length, current_length, total_length):
+        gap = total_length - current_length
+        for i in reversed(range(8)):
+            l = ((tail_length & 0x7f) + 1) << i
+            if l <= gap:
+                return l
+        return 0
 
 class PngDecoder(BaseDecoder):
     """Decoder for PNG."""
