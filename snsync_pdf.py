@@ -16,7 +16,6 @@ assert os.path.exists(OUTPUT_PATH)
 
 def convert_to_pdf(notebook_path, output_path, pdf_type='original'):
     notebook = sn.load_notebook(notebook_path)
-    total = notebook.get_total_pages()
     palette = None
     vectorize = pdf_type == 'vector'
     converter = sn.converter.PdfConverter(notebook, palette=palette)
