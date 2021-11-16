@@ -6,7 +6,6 @@ without operating export function on a real device.
 
 This tool is under development and may change.
 
-
 ## Installation
 
 ```
@@ -14,7 +13,6 @@ $ python -m venv venv
 $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
-
 
 ## Usage
 
@@ -70,14 +68,16 @@ For developers, dump note metadata as JSON format:
 $ python supernote-tool.py analyze your.note
 ```
 
-
 ## Supporting files
 
-* `*.note` file created on Supernote A5 (Firmware SN100.B000.386_release)
-* `*.note` file created on Supernote A6 X (Firmware C.291)
-* `*.note` file created on Supernote A5 X (Firmware C.291)
-
+- `*.note` file created on Supernote A5 (Firmware SN100.B000.386_release)
+- `*.note` file created on Supernote A6 X (Firmware C.291)
+- `*.note` file created on Supernote A5 X (Firmware C.291)
 
 ## License
 
 This software is released under the Apache License 2.0, see [LICENSE](LICENSE) file for details.
+
+# references
+
+- u/fbalobanov on reddit, in [this post](https://www.reddit.com/r/Supernote/comments/qrxngb/python_script_for_desktop_note_files_viewer/)
