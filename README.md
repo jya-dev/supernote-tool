@@ -81,3 +81,8 @@ This software is released under the Apache License 2.0, see [LICENSE](LICENSE) f
 # references
 
 - u/fbalobanov on reddit, in [this post](https://www.reddit.com/r/Supernote/comments/qrxngb/python_script_for_desktop_note_files_viewer/)
+
+# TODO/improvements:
+
+- TUI to select folders/files in specific to refresh
+- alternative web-based thing?
