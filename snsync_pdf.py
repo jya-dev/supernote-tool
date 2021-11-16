@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote/Note'
 
-OUTPUT_PATH = './out'
+OUTPUT_PATH = '../Notes_synced'
 
 
 assert os.path.exists(SUPERNOTE_PATH)
