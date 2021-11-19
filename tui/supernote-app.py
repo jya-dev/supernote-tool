@@ -17,12 +17,8 @@ class TextPanel(Widget):
 
     def render(self) -> Panel:
         if self.chosenpath:
-            return Panel(
-                f"Chosen path: [bold cyan]{self.chosenpath}[/bold cyan]"
-            )
-        return Panel(
-            "Chosen path: <no directory selected yet>"
-        )
+            return Panel(f"Chosen path: [bold cyan]{self.chosenpath}[/bold cyan]")
+        return Panel("Chosen path: <no directory selected yet>")
 
 
 class MyApp(App):
@@ -77,6 +73,7 @@ class MyApp(App):
             self.chosen_folder_panel.chosenpath = message.node.data.path
 
         self.log("###########")
+
 
         # Run our app class
 MyApp.run(title="Supernote sync", log="textual.log")
