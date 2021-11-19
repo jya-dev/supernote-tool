@@ -8,16 +8,20 @@ from textual.reactive import Reactive
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
 
 
-class TextPanel(Widget):
-    chosenpath = Reactive(None)
+SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
+OUTPUT_PATH = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 
-    def __init__(self, chosenpath=None) -> None:
+
+class TextPanel(Widget):
+    text = Reactive(None)
+
+    def __init__(self, text=SUPERNOTE_PATH) -> None:
         super().__init__()
-        self.chosenpath = chosenpath
+        self.text = text
 
     def render(self) -> Panel:
-        if self.chosenpath:
-            return Panel(f"Chosen path: [bold cyan]{self.chosenpath}[/bold cyan]")
+        if self.text:
+            return Panel(f"Chosen path: [bold cyan]{self.text}[/bold cyan]")
         return Panel("Chosen path: <no directory selected yet>")
 
 
@@ -30,12 +34,11 @@ class MyApp(App):
         await self.bind("q", "quit", "Quit")
 
         # Get path to show
-        try:
-            self.path = sys.argv[1]
-        except IndexError:
-            self.path = os.path.abspath(
-                os.path.join(os.path.basename(__file__), "../../")
-            )
+        if os.path.isdir(SUPERNOTE_PATH):
+            self.path = SUPERNOTE_PATH
+        else:
+            raise FileExistsError(
+                f"Path {SUPERNOTE_PATH} doesn't exist. Is your supernote plugged in?")
 
     async def on_mount(self) -> None:
         """Call after terminal goes in to application mode"""
@@ -65,15 +68,8 @@ class MyApp(App):
         self.log("hi")
 
     async def handle_tree_click(self, message: TreeClick) -> None:
-        self.log("###########")
-        self.log(message.node.data.is_dir)
-        self.log(message.node.data.path)
-        self.log("###########")
         if message.node.data.is_dir:
-            self.chosen_folder_panel.chosenpath = message.node.data.path
-
-        self.log("###########")
+            self.chosen_folder_panel.text = message.node.data.path
 
 
-        # Run our app class
 MyApp.run(title="Supernote sync", log="textual.log")
