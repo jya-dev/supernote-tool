@@ -9,20 +9,21 @@ from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree
 
 
 SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
-OUTPUT_PATH = '/home/rohan/Desktop/Supernote_files/Notes_synced'
+SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 
 
 class TextPanel(Widget):
     text = Reactive(None)
 
-    def __init__(self, text=SUPERNOTE_PATH) -> None:
+    def __init__(self, label, text=SUPERNOTE_PATH) -> None:
         super().__init__()
         self.text = text
+        self.label = label
 
     def render(self) -> Panel:
         if self.text:
-            return Panel(f"Chosen path: [bold cyan]{self.text}[/bold cyan]")
-        return Panel("Chosen path: <no directory selected yet>")
+            return Panel(f"{self.label}: [bold cyan]{self.text}[/bold cyan]")
+        return Panel(f"{self.label}: <no directory selected yet>")
 
 
 class MyApp(App):
@@ -42,11 +43,11 @@ class MyApp(App):
 
     async def on_mount(self) -> None:
         """Call after terminal goes in to application mode"""
-
         # Create our widgets
         # In this a scroll view for the code and a directory tree
         self.directory = DirectoryTree(self.path, "Code")
-        self.chosen_folder_panel = TextPanel()
+        self.chosen_folder_panel = TextPanel(label="Supernote folder")
+        self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
 
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
@@ -55,7 +56,7 @@ class MyApp(App):
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=30, name="sidebar"
         )
-        await self.view.dock(self.chosen_folder_panel, Placeholder(), Button(label="Sync"), edge="top")
+        await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, Button(label="Sync"), edge="top")
 
     async def handle_file_click(self, message: FileClick) -> None:
         """A message sent by the directory tree when a file is clicked."""
