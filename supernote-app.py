@@ -10,6 +10,7 @@ from textual.reactive import Reactive
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
 
 import re
+import time
 import glob
 from pathlib import Path
 import supernotelib as sn
@@ -73,17 +74,20 @@ class CustomButton(Widget):
         sync_path = self.sync_dir_panel.text
         paths = glob.glob(f'{chosen_path}/**/*.note', recursive=True)
         self.log(paths)
-        for i, p in enumerate(paths):
-            self.label = f'syncing {len(paths)} `.note` files\n{i+1}/{len(paths)} converted'
-            out_path = re.sub(chosen_path, sync_path, p)
-            out_path = re.sub(r'.note$', '.pdf', out_path)
-            # make dirs if needed
-            os.makedirs(Path(out_path).parent, exist_ok=True)
-            # convert to pdf
-            convert_to_pdf(
-                notebook_path=p,
-                output_path=out_path
-            )
+        self.label = f'syncing {len(paths)} `.note` files'
+        for i, p in enumerate(paths[:5]):
+            # self.label = f'syncing {len(paths)} `.note` files\n{i+1}/{len(paths)} converted'
+            time.sleep(1)
+            # out_path = re.sub(chosen_path, sync_path, p)
+            # out_path = re.sub(r'.note$', '.pdf', out_path)
+            # # make dirs if needed
+            # os.makedirs(Path(out_path).parent, exist_ok=True)
+            # # convert to pdf
+            # convert_to_pdf(
+            #     notebook_path=p,
+            #     output_path=out_path
+            # )
+        self.label = f'syncing {len(paths)} `.note` files complete!'
 
     def render(self):
         return Button(label=self.label, style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
