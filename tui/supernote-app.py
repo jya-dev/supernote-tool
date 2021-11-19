@@ -1,12 +1,25 @@
 import os
 import sys
-from rich.console import RenderableType
-from logging import getLogger
-from rich.syntax import Syntax
-from rich.traceback import Traceback
+from rich.panel import Panel
 
 from textual.app import App
+from textual.widget import Widget
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
+
+
+class TextPanel(Widget):
+    def __init__(self, chosenpath=None) -> None:
+        super().__init__()
+        self.chosenpath = chosenpath
+
+    def render(self) -> Panel:
+        if self.chosenpath:
+            return Panel(
+                f"Chosen path: [bold magenta]{self.chosenpath}[/bold magenta]"
+            )
+        return Panel(
+            "Chosen path: <no directory selected yet>"
+        )
 
 
 class MyApp(App):
@@ -41,7 +54,7 @@ class MyApp(App):
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=48, name="sidebar"
         )
-        await self.view.dock(Placeholder(), Placeholder(), Button(label="Sync"), edge="top")
+        await self.view.dock(TextPanel(), Placeholder(), Button(label="Sync"), edge="top")
 
     async def handle_file_click(self, message: FileClick) -> None:
         """A message sent by the directory tree when a file is clicked."""
@@ -58,6 +71,7 @@ class MyApp(App):
         self.log(message.node.data.is_dir)
         self.log(message.node.data.path)
         self.log("###########")
+
 
         # Run our app class
 MyApp.run(title="Supernote sync", log="textual.log")
