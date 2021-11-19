@@ -8,17 +8,31 @@ from textual.app import App
 from textual.widget import Widget
 from textual.reactive import Reactive
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
-from pyfiglet import Figlet
 
 import re
 import glob
 from pathlib import Path
-from tqdm import tqdm
 import supernotelib as sn
 
 
 SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
 SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
+
+
+def convert_to_pdf(notebook_path, output_path, pdf_type='original'):
+    notebook = sn.load_notebook(notebook_path)
+    palette = None
+    vectorize = pdf_type == 'vector'
+    converter = sn.converter.PdfConverter(notebook, palette=palette)
+
+    def save(data, file_name):
+        if data is not None:
+            with open(file_name, 'wb') as f:
+                f.write(data)
+        else:
+            print('no data')
+    data = converter.convert(-1, vectorize)
+    save(data, output_path)
 
 
 class TextPanel(Widget):
@@ -35,40 +49,17 @@ class TextPanel(Widget):
         return Panel(f"{self.label}: <no directory selected yet>")
 
 
-class FigletText:
-    """A renderable to generate figlet text that adapts to fit the container."""
-
-    def __init__(self, text: str) -> None:
-        self.text = text
-
-    def __rich_console__(
-        self, console: Console, options: ConsoleOptions
-    ) -> RenderResult:
-        """Build a Rich renderable to render the Figlet text."""
-        size = min(options.max_width / 2, options.max_height)
-        if size < 4:
-            yield Text(self.text, style="bold")
-        else:
-            if size < 7:
-                font_name = "mini"
-            elif size < 8:
-                font_name = "small"
-            elif size < 10:
-                font_name = "standard"
-            else:
-                font_name = "big"
-            font = Figlet(font=font_name, width=options.max_width)
-            yield Text(font.renderText(self.text).rstrip("\n"), style="bold")
-
-
 class CustomButton(Widget):
 
     mouse_over = Reactive(False)
+    label = Reactive("")
 
-    def __init__(self, label, chosen_folder_panel: TextPanel) -> None:
+    def __init__(self, label, chosen_folder_panel: TextPanel, sync_dir_panel: TextPanel) -> None:
         super().__init__()
         self.label = label
         self.chosen_folder_panel = chosen_folder_panel
+        self.sync_dir_panel = sync_dir_panel
+        # self.console = console
 
     def on_enter(self) -> None:
         self.mouse_over = True
@@ -77,11 +68,25 @@ class CustomButton(Widget):
         self.mouse_over = False
 
     def on_click(self) -> None:
-        self.log(self.chosen_folder_panel.text)
+        self.log("#####SYNCING########")
+        chosen_path = self.chosen_folder_panel.text
+        sync_path = self.sync_dir_panel.text
+        paths = glob.glob(f'{chosen_path}/**/*.note', recursive=True)
+        self.log(paths)
+        for i, p in enumerate(paths):
+            self.label = f'syncing {len(paths)} `.note` files\n{i+1}/{len(paths)} converted'
+            out_path = re.sub(chosen_path, sync_path, p)
+            out_path = re.sub(r'.note$', '.pdf', out_path)
+            # make dirs if needed
+            os.makedirs(Path(out_path).parent, exist_ok=True)
+            # convert to pdf
+            convert_to_pdf(
+                notebook_path=p,
+                output_path=out_path
+            )
 
     def render(self):
-        return Button(label=FigletText(
-            self.label), style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
+        return Button(label=self.label, style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
 
 
 class MyApp(App):
@@ -107,7 +112,10 @@ class MyApp(App):
         self.chosen_folder_panel = TextPanel(label="Supernote folder")
         self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
         self.sync_button = CustomButton(
-            label="sync", chosen_folder_panel=self.chosen_folder_panel)
+            label="sync",
+            chosen_folder_panel=self.chosen_folder_panel,
+            sync_dir_panel=self.sync_dir_panel,
+        )
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
         await self.view.dock(Footer(), edge="bottom")
