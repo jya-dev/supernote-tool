@@ -1,12 +1,15 @@
 import os
 import sys
+from rich.padding import Padding
 from rich.panel import Panel
+from rich.console import Console, ConsoleOptions, RenderResult, RenderableType
+from rich.text import Text
 
 from textual.app import App
 from textual.widget import Widget
 from textual.reactive import Reactive
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
-
+from pyfiglet import Figlet
 
 SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
 SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
@@ -24,6 +27,54 @@ class TextPanel(Widget):
         if self.text:
             return Panel(f"{self.label}: [bold cyan]{self.text}[/bold cyan]")
         return Panel(f"{self.label}: <no directory selected yet>")
+
+
+class FigletText:
+    """A renderable to generate figlet text that adapts to fit the container."""
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        """Build a Rich renderable to render the Figlet text."""
+        size = min(options.max_width / 2, options.max_height)
+        if size < 4:
+            yield Text(self.text, style="bold")
+        else:
+            if size < 7:
+                font_name = "mini"
+            elif size < 8:
+                font_name = "small"
+            elif size < 10:
+                font_name = "standard"
+            else:
+                font_name = "big"
+            font = Figlet(font=font_name, width=options.max_width)
+            yield Text(font.renderText(self.text).rstrip("\n"), style="bold")
+
+
+class CustomButton(Widget):
+
+    mouse_over = Reactive(False)
+
+    def __init__(self, label) -> None:
+        super().__init__()
+        self.label = label
+
+    def on_enter(self) -> None:
+        self.mouse_over = True
+
+    def on_leave(self) -> None:
+        self.mouse_over = False
+
+    def on_click(self) -> None:
+        self.log("hi")
+
+    def render(self):
+        return Button(label=FigletText(
+            self.label), style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
 
 
 class MyApp(App):
@@ -48,6 +99,9 @@ class MyApp(App):
         self.directory = DirectoryTree(self.path, "Code")
         self.chosen_folder_panel = TextPanel(label="Supernote folder")
         self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
+        self.sync_button = CustomButton(label="sync")
+        # self.sync_button = Button(label="sync")
+        # self.sync_button.style_border = "bold"
 
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
@@ -56,11 +110,7 @@ class MyApp(App):
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=30, name="sidebar"
         )
-        await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, Button(label="Sync"), edge="top")
-
-    async def handle_file_click(self, message: FileClick) -> None:
-        """A message sent by the directory tree when a file is clicked."""
-        self.log(message.path)
+        await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, self.sync_button, edge="top")
 
     def handle_button_pressed(self, message: ButtonPressed) -> None:
         """A message sent by the button widget"""
