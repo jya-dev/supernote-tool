@@ -6,8 +6,7 @@ from rich.syntax import Syntax
 from rich.traceback import Traceback
 
 from textual.app import App
-from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed
-log = getLogger("rich")
+from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
 
 
 class MyApp(App):
@@ -39,7 +38,6 @@ class MyApp(App):
         await self.view.dock(Header(), edge="top")
         await self.view.dock(Footer(), edge="bottom")
 
-        # Note the directory is in a scroll view
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=48, name="sidebar"
         )
@@ -53,7 +51,13 @@ class MyApp(App):
         """A message sent by the button widget"""
 
         assert isinstance(message.sender, Button)
+        self.log("hi")
 
+    async def handle_tree_click(self, message: TreeClick) -> None:
+        self.log("###########")
+        self.log(message.node.data.is_dir)
+        self.log(message.node.data.path)
+        self.log("###########")
 
-# Run our app class
+        # Run our app class
 MyApp.run(title="Supernote sync", log="textual.log")
