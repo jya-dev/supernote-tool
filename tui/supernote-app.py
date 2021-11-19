@@ -1,12 +1,13 @@
 import os
 import sys
 from rich.console import RenderableType
-
+from logging import getLogger
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 
 from textual.app import App
-from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder
+from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed
+log = getLogger("rich")
 
 
 class MyApp(App):
@@ -32,40 +33,27 @@ class MyApp(App):
 
         # Create our widgets
         # In this a scroll view for the code and a directory tree
-        self.body = ScrollView()
         self.directory = DirectoryTree(self.path, "Code")
 
         # Dock our widgets
         await self.view.dock(Header(), edge="top")
         await self.view.dock(Footer(), edge="bottom")
 
-        # Note the directory is also in a scroll view
+        # Note the directory is in a scroll view
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=48, name="sidebar"
         )
-        await self.view.dock(Placeholder(), Placeholder(), edge="top")
-        # await self.view.dock(self.body, edge="top")
+        await self.view.dock(Placeholder(), Placeholder(), Button(label="Sync"), edge="top")
 
     async def handle_file_click(self, message: FileClick) -> None:
         """A message sent by the directory tree when a file is clicked."""
         print(message.path)
-        syntax: RenderableType
-        try:
-            # Construct a Syntax object for the path in the message
-            syntax = Syntax.from_path(
-                message.path,
-                line_numbers=True,
-                word_wrap=True,
-                indent_guides=True,
-                theme="monokai",
-            )
-        except Exception:
-            # Possibly a binary file
-            # For demonstration purposes we will show the traceback
-            syntax = Traceback(theme="monokai", width=None, show_locals=True)
-        self.app.sub_title = os.path.basename(message.path)
-        await self.body.update(syntax)
+
+    def handle_button_pressed(self, message: ButtonPressed) -> None:
+        """A message sent by the button widget"""
+
+        assert isinstance(message.sender, Button)
 
 
 # Run our app class
-MyApp.run(title="Code Viewer", log="textual.log")
+MyApp.run(title="Supernote sync", log="textual.log")
