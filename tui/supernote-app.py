@@ -1,5 +1,4 @@
 import os
-import sys
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.console import Console, ConsoleOptions, RenderResult, RenderableType
@@ -10,6 +9,13 @@ from textual.widget import Widget
 from textual.reactive import Reactive
 from textual.widgets import Header, Footer, FileClick, ScrollView, DirectoryTree, Placeholder, Button, ButtonPressed, TreeClick
 from pyfiglet import Figlet
+
+import re
+import glob
+from pathlib import Path
+from tqdm import tqdm
+import supernotelib as sn
+
 
 SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
 SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
