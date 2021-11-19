@@ -65,9 +65,10 @@ class CustomButton(Widget):
 
     mouse_over = Reactive(False)
 
-    def __init__(self, label) -> None:
+    def __init__(self, label, chosen_folder_panel: TextPanel) -> None:
         super().__init__()
         self.label = label
+        self.chosen_folder_panel = chosen_folder_panel
 
     def on_enter(self) -> None:
         self.mouse_over = True
@@ -76,7 +77,7 @@ class CustomButton(Widget):
         self.mouse_over = False
 
     def on_click(self) -> None:
-        self.log("hi")
+        self.log(self.chosen_folder_panel.text)
 
     def render(self):
         return Button(label=FigletText(
@@ -105,7 +106,8 @@ class MyApp(App):
         self.directory = DirectoryTree(self.path, "Code")
         self.chosen_folder_panel = TextPanel(label="Supernote folder")
         self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
-        self.sync_button = CustomButton(label="sync")
+        self.sync_button = CustomButton(
+            label="sync", chosen_folder_panel=self.chosen_folder_panel)
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
         await self.view.dock(Footer(), edge="bottom")
@@ -115,11 +117,11 @@ class MyApp(App):
         )
         await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, self.sync_button, edge="top")
 
-    def handle_button_pressed(self, message: ButtonPressed) -> None:
-        """A message sent by the button widget"""
+    # def handle_button_pressed(self, message: ButtonPressed) -> None:
+    #     """A message sent by the button widget"""
 
-        assert isinstance(message.sender, Button)
-        self.log("hi")
+    #     assert isinstance(message.sender, Button)
+    #     self.log(self.chosen_folder_panel.text)
 
     async def handle_tree_click(self, message: TreeClick) -> None:
         if message.node.data.is_dir:
