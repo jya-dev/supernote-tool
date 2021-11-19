@@ -100,9 +100,6 @@ class MyApp(App):
         self.chosen_folder_panel = TextPanel(label="Supernote folder")
         self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
         self.sync_button = CustomButton(label="sync")
-        # self.sync_button = Button(label="sync")
-        # self.sync_button.style_border = "bold"
-
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
         await self.view.dock(Footer(), edge="bottom")
