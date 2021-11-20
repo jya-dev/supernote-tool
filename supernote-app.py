@@ -16,7 +16,8 @@ from pathlib import Path
 import supernotelib as sn
 
 
-SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
+# SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
+SUPERNOTE_PATH = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 
 
@@ -53,7 +54,10 @@ class TextPanel(Widget):
 class CustomButton(Widget):
 
     mouse_over = Reactive(False)
-    label = Reactive("")
+    # label = Reactive("")
+
+    # def on_mount(self):
+    #     self.set_interval(0.5, self.refresh)
 
     def __init__(self, label, chosen_folder_panel: TextPanel, sync_dir_panel: TextPanel) -> None:
         super().__init__()
@@ -68,16 +72,24 @@ class CustomButton(Widget):
     def on_leave(self) -> None:
         self.mouse_over = False
 
-    def on_click(self) -> None:
+    async def on_click(self) -> None:
         self.log("#####SYNCING########")
-        chosen_path = self.chosen_folder_panel.text
-        sync_path = self.sync_dir_panel.text
-        paths = glob.glob(f'{chosen_path}/**/*.note', recursive=True)
-        self.log(paths)
-        self.label = f'syncing {len(paths)} `.note` files'
-        for i, p in enumerate(paths[:5]):
+        # chosen_path = self.chosen_folder_panel.text
+        # sync_path = self.sync_dir_panel.text
+        # paths = glob.glob(f'{chosen_path}/**/*.note', recursive=True)
+        # self.log(paths)
+        # self.label = f'syncing {len(paths)} `.note` files'
+        for i, p in enumerate(range(10)):
             # self.label = f'syncing {len(paths)} `.note` files\n{i+1}/{len(paths)} converted'
-            time.sleep(1)
+            self.log(
+                f'syncing {10} `.note` files\n{i+1}/{10} converted')
+
+            self.label = f'syncing {10} `.note` files\n{i+1}/{10} converted'
+            self.refresh()
+            self.log(self.check_repaint())
+            await self.on_idle(None)
+            self.log(self.check_repaint())
+            time.sleep(0.5)
             # out_path = re.sub(chosen_path, sync_path, p)
             # out_path = re.sub(r'.note$', '.pdf', out_path)
             # # make dirs if needed
@@ -87,7 +99,7 @@ class CustomButton(Widget):
             #     notebook_path=p,
             #     output_path=out_path
             # )
-        self.label = f'syncing {len(paths)} `.note` files complete!'
+        # self.label = f'syncing {len(paths)} `.note` files complete!'
 
     def render(self):
         return Button(label=self.label, style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
