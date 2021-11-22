@@ -10,9 +10,12 @@ This tool is under development and may change.
 ## Installation
 
 ```
+$ git clone https://github.com/jya-dev/supernote-tool
+$ cd supernote-tool
 $ python -m venv venv
 $ source venv/bin/activate
-$ pip install -r requirements.txt
+$ pip install -U setuptools    # required if version of setuptools < 46.4.0
+$ pip install .
 ```
 
 
@@ -21,19 +24,19 @@ $ pip install -r requirements.txt
 To convert first page of your note into PNG image:
 
 ```
-$ python supernote-tool.py convert your.note output.png
+$ supernote-tool convert your.note output.png
 ```
 
 To convert all pages:
 
 ```
-$ python supernote-tool.py convert -a your.note output.png
+$ supernote-tool convert -a your.note output.png
 ```
 
 If you want to specify page number to convert:
 
 ```
-$ python supernote-tool.py convert -n 3 your.note output.png
+$ supernote-tool convert -n 3 your.note output.png
 ```
 
 You can colorize a note by specifing alternative color codes in order of black, darkgray, gray and white.
@@ -42,32 +45,32 @@ Note that use `#fefefe` for white because `#ffffff` is used for transparent.
 To convert black into red:
 
 ```
-$ python supernote-tool.py convert -c "#ff0000,#9d9d9d,#c9c9c9,#fefefe" your.note output.png
+$ supernote-tool convert -c "#ff0000,#9d9d9d,#c9c9c9,#fefefe" your.note output.png
 ```
 
 To convert into SVG file format:
 
 ```
-$ python supernote-tool.py convert -t svg your.note output.svg
+$ supernote-tool convert -t svg your.note output.svg
 ```
 
 To convert all pages into PDF file format:
 
 ```
-$ python supernote-tool.py convert -t pdf -a your.note output.pdf
+$ supernote-tool convert -t pdf -a your.note output.pdf
 ```
 
 You can also convert your handwriting to vector format and save it as PDF with `--pdf-type vector` option.
 Note that converting to a vector takes time.
 
 ```
-$ python supernote-tool.py convert -t pdf --pdf-type vector -a your.note output.pdf
+$ supernote-tool convert -t pdf --pdf-type vector -a your.note output.pdf
 ```
 
 For developers, dump note metadata as JSON format:
 
 ```
-$ python supernote-tool.py analyze your.note
+$ supernote-tool analyze your.note
 ```
 
 
