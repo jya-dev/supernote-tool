@@ -149,10 +149,13 @@ class NoteToPdf(LoggingMixIn, Operations):
     utimens = os.utime
     write = None
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) != 3:
         print('usage: %s <root> <mountpoint>' % sys.argv[0])
         sys.exit(1)
 
     logging.basicConfig(level=logging.INFO)
     fuse = FUSE(NoteToPdf(sys.argv[1]), sys.argv[2], foreground=True)
+
+if __name__ == '__main__':
+    main()

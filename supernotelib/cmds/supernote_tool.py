@@ -97,7 +97,7 @@ def parse_color(color_string):
     return (black, darkgray, gray, white)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Unofficial python tool for Ratta Supernote')
     subparsers = parser.add_subparsers()
 
@@ -122,3 +122,6 @@ if __name__ == '__main__':
         args.handler(args)
     else:
         parser.print_help()
+
+if __name__ == '__main__':
+    main()
