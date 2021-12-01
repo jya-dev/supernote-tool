@@ -15,10 +15,11 @@ import time
 import glob
 from pathlib import Path
 import supernotelib as sn
+from tqdm import tqdm
 
 
-# SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
-SUPERNOTE_PATH = '/home/rohan/Desktop/Supernote_files/Notes_synced'
+SUPERNOTE_PATH = '/run/user/1000/gvfs/mtp:host=rockchip_Supernote_A5_X_SN100B10004997/Supernote'
+# SUPERNOTE_PATH = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 SYNC_DIR = '/home/rohan/Desktop/Supernote_files/Notes_synced'
 
 
@@ -147,9 +148,14 @@ def main():
         return
     if os.path.exists(SUPERNOTE_PATH):
         richprint(
+            f"Path to local sync folder: [bold cyan]{SYNC_DIR}[/bold cyan]")
+        richprint(
             f"Path to supernote folder: [bold cyan]{SUPERNOTE_PATH}[/bold cyan]")
         change_supernote_path = get_user_input(
             "Change folder to sync in supernote? (y/n): ")
+        chosen_dir = SUPERNOTE_PATH
+        sync_dir = SYNC_DIR
+
         if change_supernote_path:
             MyApp.run(title="Supernote sync", log="textual.log")
             if TrackState.sync_dir == None or TrackState.chosen_dir == None:
@@ -157,9 +163,22 @@ def main():
                     f"[red]No folder selected in supernote[red]")
                 return
 
-            print(TrackState.sync_dir)
-            print(TrackState.chosen_dir)
-
+            sync_dir = TrackState.sync_dir
+            chosen_dir = TrackState.chosen_dir
+        richprint(
+            f"Path to supernote folder: [bold cyan]{chosen_dir}[/bold cyan]")
+        for p in tqdm(glob.glob(f'{chosen_dir}/**/*.note', recursive=True)):
+            out_path = re.sub(chosen_dir, sync_dir, p)
+            out_path = re.sub(r'.note$', '.pdf', out_path)
+            print(out_path)  # dir structure not preserversd
+            # make dirs if needed
+            os.makedirs(Path(out_path).parent, exist_ok=True)
+            # convert to pdf
+            convert_to_pdf(
+                notebook_path=p,
+                output_path=out_path
+            )
+        richprint(f"[bold cyan]Sync complete[/bold cyan]")
     else:
         richprint(
             f"[red]Supernote path not found. Double check the path in the config file.[red]")
