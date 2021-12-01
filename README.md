@@ -86,3 +86,4 @@ This software is released under the Apache License 2.0, see [LICENSE](LICENSE) f
 
 - TUI to select folders/files in specific to refresh
 - alternative web-based thing?
+- https://rich.readthedocs.io/en/stable/appendix/colors.html#appendix-colors

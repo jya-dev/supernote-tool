@@ -37,34 +37,40 @@ def convert_to_pdf(notebook_path, output_path, pdf_type='original'):
     save(data, output_path)
 
 
+class TrackState:
+    chosen_dir = None
+    sync_dir = None
+
+    def __str__():
+        print(
+            f"chosen_dir:{TrackState.chosen_dir}\nchosen_dir:{TrackState.sync_dir}")
+
+
 class TextPanel(Widget):
     text = Reactive(None)
 
-    def __init__(self, label, text=SUPERNOTE_PATH) -> None:
+    def __init__(self, label, text=SUPERNOTE_PATH, color='cyan') -> None:
         super().__init__()
         self.text = text
         self.label = label
+        self.color = color
 
     def render(self) -> Panel:
         if self.text:
-            return Panel(f"{self.label}: [bold cyan]{self.text}[/bold cyan]")
+            return Panel(f"{self.label}: [bold {self.color}]{self.text}[/bold {self.color}]")
         return Panel(f"{self.label}: <no directory selected yet>")
 
 
-class CustomButton(Widget):
+class ConfirmButton(Widget):
 
     mouse_over = Reactive(False)
-    # label = Reactive("")
 
-    # def on_mount(self):
-    #     self.set_interval(0.5, self.refresh)
-
-    def __init__(self, label, chosen_folder_panel: TextPanel, sync_dir_panel: TextPanel) -> None:
+    def __init__(self, label, chosen_folder_panel: TextPanel, sync_dir_panel: TextPanel, quit_gui_fn) -> None:
         super().__init__()
         self.label = label
         self.chosen_folder_panel = chosen_folder_panel
         self.sync_dir_panel = sync_dir_panel
-        # self.console = console
+        self.quit_gui_fn = quit_gui_fn
 
     def on_enter(self) -> None:
         self.mouse_over = True
@@ -73,33 +79,10 @@ class CustomButton(Widget):
         self.mouse_over = False
 
     async def on_click(self) -> None:
-        self.log("#####SYNCING########")
-        # chosen_path = self.chosen_folder_panel.text
-        # sync_path = self.sync_dir_panel.text
-        # paths = glob.glob(f'{chosen_path}/**/*.note', recursive=True)
-        # self.log(paths)
-        # self.label = f'syncing {len(paths)} `.note` files'
-        for i, p in enumerate(range(10)):
-            # self.label = f'syncing {len(paths)} `.note` files\n{i+1}/{len(paths)} converted'
-            self.log(
-                f'syncing {10} `.note` files\n{i+1}/{10} converted')
-
-            self.label = f'syncing {10} `.note` files\n{i+1}/{10} converted'
-            self.refresh()
-            self.log(self.check_repaint())
-            await self.on_idle(None)
-            self.log(self.check_repaint())
-            time.sleep(0.5)
-            # out_path = re.sub(chosen_path, sync_path, p)
-            # out_path = re.sub(r'.note$', '.pdf', out_path)
-            # # make dirs if needed
-            # os.makedirs(Path(out_path).parent, exist_ok=True)
-            # # convert to pdf
-            # convert_to_pdf(
-            #     notebook_path=p,
-            #     output_path=out_path
-            # )
-        # self.label = f'syncing {len(paths)} `.note` files complete!'
+        self.log(f"chosen dir is {self.chosen_folder_panel.text}")
+        TrackState.chosen_dir = self.chosen_folder_panel.text
+        TrackState.sync_dir = self.sync_dir_panel.text
+        await self.quit_gui_fn()
 
     def render(self):
         return Button(label=self.label, style='black on cyan' if not self.mouse_over else 'black on rgb(16,132,199)')
@@ -108,6 +91,7 @@ class CustomButton(Widget):
 class MyApp(App):
 
     async def on_load(self) -> None:
+        # self.action_quit
         """Sent before going in to application mode."""
         # Bind our basic keys
         await self.bind("b", "view.toggle('sidebar')", "Toggle sidebar")
@@ -120,24 +104,33 @@ class MyApp(App):
             raise FileExistsError(
                 f"Path {SUPERNOTE_PATH} doesn't exist. Is your supernote plugged in?")
 
+    async def quit(self):
+        await self.action_quit()
+
     async def on_mount(self) -> None:
         """Call after terminal goes in to application mode"""
         # Create our widgets
         # In this a scroll view for the code and a directory tree
         self.directory = DirectoryTree(self.path, "Code")
-        self.chosen_folder_panel = TextPanel(label="Supernote folder")
-        self.sync_dir_panel = TextPanel(label="Sync directory", text=SYNC_DIR)
-        self.sync_button = CustomButton(
-            label="sync",
+        self.chosen_folder_panel = TextPanel(
+            label="Supernote folder")
+        self.sync_dir_panel = TextPanel(
+            label="Sync directory", text=SYNC_DIR, color="grey82")
+        self.sync_button = ConfirmButton(
+            label="select",
             chosen_folder_panel=self.chosen_folder_panel,
             sync_dir_panel=self.sync_dir_panel,
+            quit_gui_fn=self.quit
         )
         # Dock our widgets
         await self.view.dock(Header(tall=False), edge="top")
         await self.view.dock(Footer(), edge="bottom")
 
+        # await self.view.dock(
+        #     ScrollView(self.directory), edge="left", name="sidebar"
+        # )
         await self.view.dock(
-            ScrollView(self.directory), edge="left", size=30, name="sidebar"
+            ScrollView(self.directory), edge="left", size=50, name="sidebar"
         )
         await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, self.sync_button, edge="top")
 
@@ -152,4 +145,7 @@ class MyApp(App):
             self.chosen_folder_panel.text = message.node.data.path
 
 
-MyApp.run(title="Supernote sync", log="textual.log")
+if __name__ == '__main__':
+    MyApp.run(title="Supernote sync", log="textual.log")
+    print(TrackState.sync_dir)
+    print(TrackState.chosen_dir)
