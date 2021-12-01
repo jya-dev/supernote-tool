@@ -1,6 +1,7 @@
 import os
 from rich.padding import Padding
 from rich.panel import Panel
+from rich import print as richprint
 from rich.console import Console, ConsoleOptions, RenderResult, RenderableType
 from rich.text import Text
 
@@ -40,10 +41,6 @@ def convert_to_pdf(notebook_path, output_path, pdf_type='original'):
 class TrackState:
     chosen_dir = None
     sync_dir = None
-
-    def __str__():
-        print(
-            f"chosen_dir:{TrackState.chosen_dir}\nchosen_dir:{TrackState.sync_dir}")
 
 
 class TextPanel(Widget):
@@ -126,26 +123,47 @@ class MyApp(App):
         await self.view.dock(Header(tall=False), edge="top")
         await self.view.dock(Footer(), edge="bottom")
 
-        # await self.view.dock(
-        #     ScrollView(self.directory), edge="left", name="sidebar"
-        # )
         await self.view.dock(
             ScrollView(self.directory), edge="left", size=50, name="sidebar"
         )
         await self.view.dock(self.chosen_folder_panel, self.sync_dir_panel, self.sync_button, edge="top")
-
-    # def handle_button_pressed(self, message: ButtonPressed) -> None:
-    #     """A message sent by the button widget"""
-
-    #     assert isinstance(message.sender, Button)
-    #     self.log(self.chosen_folder_panel.text)
 
     async def handle_tree_click(self, message: TreeClick) -> None:
         if message.node.data.is_dir:
             self.chosen_folder_panel.text = message.node.data.path
 
 
+def get_user_input(prompt: str) -> bool:
+    x = input(prompt)
+    while x.lower() not in ['y', 'n']:
+        x = input(prompt)
+    return True if x.lower() == 'y' else False
+
+
+def main():
+    if not os.path.exists(SYNC_DIR):
+        richprint(
+            f"[red]Local sync directory path not found. Double check the path in the config file.[red]")
+        return
+    if os.path.exists(SUPERNOTE_PATH):
+        richprint(
+            f"Path to supernote folder: [bold cyan]{SUPERNOTE_PATH}[/bold cyan]")
+        change_supernote_path = get_user_input(
+            "Change folder to sync in supernote? (y/n): ")
+        if change_supernote_path:
+            MyApp.run(title="Supernote sync", log="textual.log")
+            if TrackState.sync_dir == None or TrackState.chosen_dir == None:
+                richprint(
+                    f"[red]No folder selected in supernote[red]")
+                return
+
+            print(TrackState.sync_dir)
+            print(TrackState.chosen_dir)
+
+    else:
+        richprint(
+            f"[red]Supernote path not found. Double check the path in the config file.[red]")
+
+
 if __name__ == '__main__':
-    MyApp.run(title="Supernote sync", log="textual.log")
-    print(TrackState.sync_dir)
-    print(TrackState.chosen_dir)
+    main()
