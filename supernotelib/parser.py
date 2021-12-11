@@ -21,13 +21,19 @@ from . import exceptions
 from . import fileformat
 
 
-def parse_metadata(file_name):
+def parse_metadata(file_name, policy='strict'):
     """Parses a supernote file and returns metadata object.
+
+    Policy:
+    - 'strict': raise exception for unknown signature (default)
+    - 'loose': try to parse for unknown signature
 
     Parameters
     ----------
     file_name : str
         file path string
+    policy : str
+        signature check policy
 
     Returns
     -------
@@ -36,7 +42,7 @@ def parse_metadata(file_name):
     """
     try:
         parser = SupernoteParser()
-        metadata = parser.parse(file_name)
+        metadata = parser.parse(file_name, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
         pass
@@ -45,7 +51,7 @@ def parse_metadata(file_name):
 
     try:
         parser = SupernoteXParser()
-        metadata = parser.parse(file_name)
+        metadata = parser.parse(file_name, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
         pass
@@ -55,15 +61,21 @@ def parse_metadata(file_name):
     # we cannot parse the file with any our parser.
     raise exceptions.UnsupportedFileFormat('unsupported file format')
 
-def load_notebook(file_name, metadata=None):
+def load_notebook(file_name, metadata=None, policy='strict'):
     """Creates a Notebook object from the supernote file.
 
-    Parameters
+    Policy:
+    - 'strict': raise exception for unknown signature (default)
+    - 'loose': try to parse for unknown signature
+
+   Parameters
     ----------
     file_name : str
         file path string
     metadata : SupernoteMetadata
         metadata object
+    policy : str
+        signature check policy
 
     Returns
     -------
@@ -71,7 +83,7 @@ def load_notebook(file_name, metadata=None):
         notebook object
     """
     if metadata is None:
-        metadata = parse_metadata(file_name)
+        metadata = parse_metadata(file_name, policy)
 
     note = fileformat.Notebook(metadata)
 
@@ -117,15 +129,22 @@ def _get_bitmap_address(metadata, page_number):
 
 class SupernoteParser:
     """Parser for original Supernote."""
+    SN_SIGNATURE_PATTERN = r'SN_FILE_ASA_\d{8}'
     SN_SIGNATURES = ['SN_FILE_ASA_20190529']
 
-    def parse(self, file_name):
+    def parse(self, file_name, policy='strict'):
         """Parses a Supernote file and returns SupernoteMetadata object.
+
+        Policy:
+        - 'strict': raise exception for unknown signature (default)
+        - 'loose': try to parse for unknown signature
 
         Parameters
         ----------
         file_name : str
             file path string
+        policy : str
+            signature check policy
 
         Returns
         -------
@@ -136,7 +155,11 @@ class SupernoteParser:
             # check file signature
             signature = self._find_matching_signature(f)
             if signature is None:
-                raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
+                compatible = self._check_signature_compatible(f)
+                if policy != 'loose' or not compatible:
+                    raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
+                else:
+                    signature = self.SN_SIGNATURES[-1] # treat as latest supported signature
             # parse footer block
             f.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
             footer_address = int.from_bytes(f.read(fileformat.ADDRESS_SIZE), 'little')
@@ -177,6 +200,19 @@ class SupernoteParser:
             if signature == sig:
                 return signature
         return None
+
+    def _check_signature_compatible(self, fobj):
+        latest_signature = self.SN_SIGNATURES[-1]
+        try:
+            fobj.seek(0, os.SEEK_SET)
+            signature = fobj.read(len(latest_signature)).decode()
+        except Exception:
+            return False
+        else:
+            if re.match(self.SN_SIGNATURE_PATTERN, signature):
+                return True
+            else:
+                return False
 
     def _parse_footer_block(self, fobj, address):
         return self._parse_metadata_block(fobj, address)
@@ -298,6 +334,7 @@ class SupernoteParser:
 
 class SupernoteXParser(SupernoteParser):
     """Parser for Supernote X-series."""
+    SN_SIGNATURE_PATTERN = r'noteSN_FILE_VER_\d{8}'
     SN_SIGNATURES = [
         'noteSN_FILE_VER_20200001', # Firmware version C.053
         'noteSN_FILE_VER_20200005', # Firmware version C.077
