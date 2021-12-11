@@ -34,11 +34,11 @@ def convert_all(converter, total, file_name, save_func):
 
 def subcommand_analyze(args):
     # show all metadata as JSON
-    metadata = sn.parse_metadata(args.input)
+    metadata = sn.parse_metadata(args.input, policy=args.policy)
     print(metadata.to_json(indent=2))
 
 def subcommand_convert(args):
-    notebook = sn.load_notebook(args.input)
+    notebook = sn.load_notebook(args.input, policy=args.policy)
     total = notebook.get_total_pages()
     palette = None
     if args.color:
@@ -115,6 +115,7 @@ def main():
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
     parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf'], default='png', help='select conversion file type')
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
+    parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
 
     args = parser.parse_args()
