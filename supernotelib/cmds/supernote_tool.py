@@ -104,6 +104,7 @@ def main():
     # 'analyze' subcommand
     parser_analyze = subparsers.add_parser('analyze', help='analyze note file')
     parser_analyze.add_argument('input', type=str, help='input note file')
+    parser_analyze.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_analyze.set_defaults(handler=subcommand_analyze)
 
     # 'convert' subcommand
