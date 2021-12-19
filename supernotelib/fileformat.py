@@ -124,6 +124,7 @@ class SupernoteMetadata:
 class Notebook:
     def __init__(self, metadata):
         self.metadata = metadata
+        self.signature = metadata.signature
         self.pages = []
         total = metadata.get_total_pages()
         for i in range(total):
@@ -131,6 +132,9 @@ class Notebook:
 
     def get_metadata(self):
         return self.metadata
+
+    def get_signature(self):
+        return self.signature
 
     def get_total_pages(self):
         return len(self.pages)

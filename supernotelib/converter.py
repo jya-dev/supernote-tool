@@ -89,7 +89,10 @@ class ImageConverter:
                 continue
             decoder = self.find_decoder(layer)
             page_style = page.get_style()
-            all_blank = (layer_name == 'BGLAYER' and page_style is not None and page_style == 'style_white')
+            signature = self.note.get_signature()
+            version = signature[-8:]
+            all_blank = (layer_name == 'BGLAYER' and page_style is not None and page_style == 'style_white' and \
+                         version <= '20210009')
             custom_bg = (layer_name == 'BGLAYER' and page_style is not None and page_style.startswith('user_'))
             if custom_bg:
                 decoder = Decoder.PngDecoder()
