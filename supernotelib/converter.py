@@ -42,6 +42,8 @@ class VisibilityOverlay(Enum):
 
 
 class ImageConverter:
+    SPECIAL_WHITE_STYLE_BLOCK_SIZE = 0x140e
+
     def __init__(self, notebook, palette=None):
         self.note = notebook
         self.palette = palette
@@ -87,12 +89,11 @@ class ImageConverter:
             if binary is None:
                 imgs[layer_name] = None
                 continue
+            binary_size = len(binary)
             decoder = self.find_decoder(layer)
             page_style = page.get_style()
-            signature = self.note.get_signature()
-            version = signature[-8:]
             all_blank = (layer_name == 'BGLAYER' and page_style is not None and page_style == 'style_white' and \
-                         version <= '20210009')
+                         binary_size == self.SPECIAL_WHITE_STYLE_BLOCK_SIZE)
             custom_bg = (layer_name == 'BGLAYER' and page_style is not None and page_style.startswith('user_'))
             if custom_bg:
                 decoder = Decoder.PngDecoder()
