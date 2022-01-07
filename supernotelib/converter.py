@@ -121,8 +121,17 @@ class ImageConverter:
                     continue
             img_layer = imgs.get(name)
             if img_layer is not None:
+                if name == 'BGLAYER':
+                    # convert transparent to white for custom template
+                    img_layer = self._whiten_transparent(img_layer)
                 flatten_img = flatten(img_layer, flatten_img)
         return flatten_img
+
+    def _whiten_transparent(self, img):
+        img = img.convert('RGBA')
+        newImg = Image.new('RGBA', img.size, color.RGB_WHITE)
+        newImg.paste(img, mask=img)
+        return newImg
 
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False):
         bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint)
