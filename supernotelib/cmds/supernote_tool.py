@@ -86,6 +86,12 @@ def subcommand_convert(args):
             data = converter.convert(args.number, vectorize)
             save(data, args.output)
 
+def subcommand_merge(args):
+    notebook1 = sn.load_notebook(args.input1, policy=args.policy)
+    notebook2 = sn.load_notebook(args.input2, policy=args.policy)
+    merged_notebook = sn.merge(notebook1, notebook2)
+    # sn.save_as_note(merged_notebook, args.output)
+
 def parse_color(color_string):
     colorcodes = color_string.split(',')
     if len(colorcodes) != 4:
@@ -118,6 +124,14 @@ def main():
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
+
+    # 'merge' subcommand
+    parser_merge = subparsers.add_parser('merge', help='merge multiple note files')
+    parser_merge.add_argument('input1', type=str, help='1st input note file')
+    parser_merge.add_argument('input2', type=str, help='2nd input note file')
+    parser_merge.add_argument('output', type=str, help='output note file')
+    parser_merge.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
+    parser_merge.set_defaults(handler=subcommand_merge)
 
     args = parser.parse_args()
     if hasattr(args, 'handler'):

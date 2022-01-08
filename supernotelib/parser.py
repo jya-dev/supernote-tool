@@ -88,6 +88,12 @@ def load_notebook(file_name, metadata=None, policy='strict'):
     note = fileformat.Notebook(metadata)
 
     with open(file_name, 'rb') as f:
+        address = _get_header_address(metadata)
+        content = _get_content_at_address(f, address)
+        note.header.set_content(content)
+        address = _get_footer_address(metadata)
+        content = _get_content_at_address(f, address)
+        note.footer.set_content(content)
         page_total = metadata.get_total_pages()
         for p in range(page_total):
             addresses = _get_bitmap_address(metadata, p)
@@ -107,6 +113,26 @@ def _get_content_at_address(fobj, address):
         block_length = int.from_bytes(fobj.read(fileformat.LENGTH_FIELD_SIZE), 'little')
         content = fobj.read(block_length)
     return content
+
+def _get_header_address(metadata):
+    """Returns address of the header.
+
+    Returns
+    -------
+    int
+        header address
+    """
+    return int(metadata.footer['FILE_FEATURE'])
+
+def _get_footer_address(metadata):
+    """Returns address of the footer.
+
+    Returns
+    -------
+    int
+        footer address
+    """
+    return int(metadata.footer['FILE_FEATURE'])
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
