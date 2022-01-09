@@ -209,8 +209,11 @@ def _verify_header_property(prop_name, metadata1, metadata2):
 def _construct_metadata_block(info):
     block_data = ''
     for k, v in info.items():
-        prop = f'<{k}:{v}>'
-        block_data += prop
+        if type(v) == list:
+            for e in v:
+                block_data += f'<{k}:{e}>'
+        else:
+            block_data += f'<{k}:{v}>'
     return block_data.encode('ascii')
 
 def _extract_background_properties(footer):
