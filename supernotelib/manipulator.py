@@ -17,6 +17,8 @@
 import os
 import re
 
+from . import fileformat
+
 
 class NotebookBuilder:
     def __init__(self, offset=0):
@@ -35,14 +37,16 @@ class NotebookBuilder:
         return self.toc.keys()
 
     def append(self, label, block, skip_block_size=False):
+        if block is None:
+            return
         block_size = len(block)
         if not skip_block_size:
-            self.blocks.append(block_size.to_bytes(4, 'little'))
+            self.blocks.append(block_size.to_bytes(fileformat.LENGTH_FIELD_SIZE, 'little'))
         self.blocks.append(block)
         self.toc.setdefault(label, self.total_size)
         self.total_size += block_size
         if not skip_block_size:
-            self.total_size += 4
+            self.total_size += fileformat.LENGTH_FIELD_SIZE
 
     def build(self):
         return b''.join(self.blocks)
@@ -106,14 +110,19 @@ def reconstruct(notebook):
                 layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'PAGE{i+1}/{layer_name}/LAYERBITMAP'))
                 layer_metadata_block = _construct_metadata_block(layer_metadata)
                 builder.append(f'PAGE{i+1}/{layer_name}/metadata', layer_metadata_block)
-        # TODO: append TOTALPATH block
+        # totalpath
+        totalpath_block = page.get_totalpath()
+        if totalpath_block is not None:
+            builder.append(f'PAGE{i+1}/TOTALPATH', totalpath_block)
+
         # page metadata
         page_metadata = page.metadata
         del page_metadata['__layers__']
         for prop in ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']:
             address = builder.get_block_address(f'PAGE{i+1}/{prop}/metadata')
-            page_metadata[prop] = address # override addresses of layer metadata
-            page_metadata_block = _construct_metadata_block(page_metadata)
+            page_metadata[prop] = address
+        page_metadata['TOTALPATH'] = builder.get_block_address(f'PAGE{i+1}/TOTALPATH')
+        page_metadata_block = _construct_metadata_block(page_metadata)
         builder.append(f'PAGE{i+1}/metadata', page_metadata_block)
 
     # footer
@@ -128,7 +137,7 @@ def reconstruct(notebook):
             address = builder.get_block_address(label)
             label = label[:-len('/metadata')]
             metadata_footer.setdefault(label, address)
-    # TODO: support KEYWORD, TITLE, COVER
+    # TODO: support COVER, KEYWORD, TITLE, custom template (STYLE_user_...)
     footer_block = _construct_metadata_block(metadata_footer)
     builder.append('__footer__', footer_block)
 

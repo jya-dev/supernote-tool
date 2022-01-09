@@ -98,6 +98,11 @@ def load_notebook(file_name, metadata=None, policy='strict'):
                 for l, addr in enumerate(addresses):
                     content = _get_content_at_address(f, addr)
                     note.get_page(p).get_layer(l).set_content(content)
+            # store path data to notebook object
+            totalpath_address = _get_totalpath_address(metadata, p)
+            if totalpath_address > 0:
+                content = _get_content_at_address(f, totalpath_address)
+                note.get_page(p).set_totalpath(content)
     return note
 
 def _get_content_at_address(fobj, address):
@@ -125,6 +130,20 @@ def _get_bitmap_address(metadata, page_number):
     else:
         addresses.append(int(metadata.pages[page_number]['DATA']))
     return addresses
+
+def _get_totalpath_address(metadata, page_number):
+    """Returns total path address of the given page number.
+
+    Returns
+    -------
+    int
+        total path address
+    """
+    if 'TOTALPATH' in metadata.pages[page_number]:
+        address = int(metadata.pages[page_number]['TOTALPATH'])
+    else:
+        address = 0
+    return address
 
 
 class SupernoteParser:

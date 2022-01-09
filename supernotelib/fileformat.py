@@ -149,6 +149,7 @@ class Page:
     def __init__(self, page_info):
         self.metadata = page_info
         self.content = None
+        self.totalpath = None
         self.layers = []
         layer_supported = page_info.get(KEY_LAYERS) is not None
         if layer_supported:
@@ -203,6 +204,11 @@ class Page:
         order = seq.split(',')
         return order
 
+    def set_totalpath(self, totalpath):
+        self.totalpath = totalpath
+
+    def get_totalpath(self):
+        return self.totalpath
 
 class Layer:
     def __init__(self, layer_info):
