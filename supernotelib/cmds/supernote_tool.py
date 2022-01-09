@@ -92,6 +92,12 @@ def subcommand_merge(args):
     merged_notebook = sn.merge(notebook1, notebook2)
     # sn.save_as_note(merged_notebook, args.output)
 
+def subcommand_reconstruct(args):
+    notebook = sn.load_notebook(args.input)
+    reconstructed_binary = sn.reconstruct(notebook)
+    with open(args.output, 'wb') as f:
+        f.write(reconstructed_binary)
+
 def parse_color(color_string):
     colorcodes = color_string.split(',')
     if len(colorcodes) != 4:
@@ -132,6 +138,12 @@ def main():
     parser_merge.add_argument('output', type=str, help='output note file')
     parser_merge.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_merge.set_defaults(handler=subcommand_merge)
+
+    # 'reconstruct' subcommand
+    parser_reconstruct = subparsers.add_parser('reconstruct', help='reconstruct a note file for debug')
+    parser_reconstruct.add_argument('input', type=str, help='input note file')
+    parser_reconstruct.add_argument('output', type=str, help='output note file')
+    parser_reconstruct.set_defaults(handler=subcommand_reconstruct)
 
     args = parser.parse_args()
     if hasattr(args, 'handler'):

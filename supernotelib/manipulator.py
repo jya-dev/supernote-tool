@@ -15,8 +15,128 @@
 """Note manipulator classes."""
 
 import os
+import re
 
-from . import parser
+
+class NotebookBuilder:
+    def __init__(self, offset=0):
+        self.total_size = offset
+        self.toc = {}
+        self.blocks = []
+
+    def get_total_size(self):
+        return self.total_size
+
+    def get_block_address(self, label):
+        address = self.toc.get(label)
+        return address if address is not None else 0
+
+    def get_labels(self):
+        return self.toc.keys()
+
+    def append(self, label, block, skip_block_size=False):
+        block_size = len(block)
+        if not skip_block_size:
+            self.blocks.append(block_size.to_bytes(4, 'little'))
+        self.blocks.append(block)
+        self.toc.setdefault(label, self.total_size)
+        self.total_size += block_size
+        if not skip_block_size:
+            self.total_size += 4
+
+    def build(self):
+        return b''.join(self.blocks)
+
+    def dump(self):
+        print('# NotebookBuilder Dump:')
+        print(f'# total_size = {self.total_size}')
+        print(f'# toc = {self.toc}')
+
+
+def reconstruct(notebook):
+    """Reconstruct a notebook for debug."""
+    metadata = notebook.get_metadata()
+    if metadata.signature != 'noteSN_FILE_VER_20210010':
+        raise ValueError('Only latest file format version is supported')
+
+    builder = NotebookBuilder()
+
+    # signature
+    builder.append('__signature__', metadata.signature.encode('ascii'), skip_block_size=True)
+
+    # header
+    header_block = _construct_metadata_block(metadata.header)
+    builder.append('__header__', header_block)
+
+    # background images
+    for i in range(notebook.get_total_pages()):
+        page = notebook.get_page(i)
+        style = page.get_style()
+        content = _get_background_content_from_page(page)
+        if content is not None:
+            builder.append(f'STYLE_{style}', content)
+
+    # pages
+    for i in range(notebook.get_total_pages()):
+        page = notebook.get_page(i)
+        # layers
+        visited_mainlayer = False # workaround for dulicated layer name
+        layers = page.get_layers()
+        for layer in layers:
+            layer_name = layer.get_name()
+            if layer_name is None:
+                continue
+            if visited_mainlayer and layer_name == 'MAINLAYER':
+                # this layer has duplicated name, so we guess this layer is BGLAYER
+                layer_name = 'BGLAYER'
+            elif layer_name == 'MAINLAYER':
+                visited_mainlayer = True
+            if layer_name == 'BGLAYER':
+                style = page.get_style()
+                layer_metadata = layer.metadata
+                layer_metadata['LAYERNAME'] = layer_name
+                layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'STYLE_{style}'))
+                layer_metadata_block = _construct_metadata_block(layer_metadata)
+                builder.append(f'PAGE{i+1}/{layer_name}/metadata', layer_metadata_block)
+            else:
+                content = layer.get_content()
+                builder.append(f'PAGE{i+1}/{layer_name}/LAYERBITMAP', content)
+                layer_metadata = layer.metadata
+                layer_metadata['LAYERNAME'] = layer_name
+                layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'PAGE{i+1}/{layer_name}/LAYERBITMAP'))
+                layer_metadata_block = _construct_metadata_block(layer_metadata)
+                builder.append(f'PAGE{i+1}/{layer_name}/metadata', layer_metadata_block)
+        # TODO: append TOTALPATH block
+        # page metadata
+        page_metadata = page.metadata
+        del page_metadata['__layers__']
+        for prop in ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']:
+            address = builder.get_block_address(f'PAGE{i+1}/{prop}/metadata')
+            page_metadata[prop] = address # override addresses of layer metadata
+            page_metadata_block = _construct_metadata_block(page_metadata)
+        builder.append(f'PAGE{i+1}/metadata', page_metadata_block)
+
+    # footer
+    metadata_footer = {}
+    metadata_footer.setdefault('FILE_FEATURE', builder.get_block_address('__header__'))
+    for label in builder.get_labels():
+        if label.startswith('STYLE_'):
+            address = builder.get_block_address(label)
+            metadata_footer.setdefault(label, address)
+    for label in builder.get_labels():
+        if re.match(r'PAGE\d+/metadata', label):
+            address = builder.get_block_address(label)
+            label = label[:-len('/metadata')]
+            metadata_footer.setdefault(label, address)
+    # TODO: support KEYWORD, TITLE, COVER
+    footer_block = _construct_metadata_block(metadata_footer)
+    builder.append('__footer__', footer_block)
+
+    # footer address
+    footer_address = builder.get_block_address('__footer__')
+    builder.append('__footer_address__', footer_address.to_bytes(4, 'little'), skip_block_size=True)
+
+    return builder.build()
 
 
 def merge(notebook1, notebook2):
@@ -82,7 +202,7 @@ def _construct_metadata_block(info):
     for k, v in info.items():
         prop = f'<{k}:{v}>'
         block_data += prop
-    return block_data
+    return block_data.encode('ascii')
 
 def _extract_background_properties(footer):
     props = {}
@@ -94,9 +214,15 @@ def _extract_background_properties(footer):
 def _get_background_content_from_page(page):
     if not page.is_layer_supported():
         return None
+    visited_mainlayer = False # workaround for dulicated layer name
     layers = page.get_layers()
     for l in layers:
-        if l.get_name() == 'BGLAYER':
+        layer_name = l.get_name()
+        if visited_mainlayer and layer_name == 'MAINLAYER':
+            # this layer has duplicated name, so we guess this layer is BGLAYER
+            layer_name = 'BGLAYER'
+        elif layer_name == 'MAINLAYER':
+            visited_mainlayer = True
+        if layer_name == 'BGLAYER':
             return l.get_content()
-    # TODO: handle files that have duplicated MAINLAYER (no BGLAYER)
     return None
