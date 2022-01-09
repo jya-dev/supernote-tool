@@ -76,6 +76,9 @@ def reconstruct(notebook):
     for i in range(notebook.get_total_pages()):
         page = notebook.get_page(i)
         style = page.get_style()
+        if style.startswith('user_'):
+            md5sum = page.get_style_hash()
+            style += md5sum
         content = _get_background_content_from_page(page)
         if content is not None:
             builder.append(f'STYLE_{style}', content)
@@ -137,7 +140,8 @@ def reconstruct(notebook):
             address = builder.get_block_address(label)
             label = label[:-len('/metadata')]
             metadata_footer.setdefault(label, address)
-    # TODO: support COVER, KEYWORD, TITLE, custom template (STYLE_user_...)
+    metadata_footer['COVER_0'] = 0 # TODO: support COVER_1
+    # TODO: support KEYWORD, TITLE
     footer_block = _construct_metadata_block(metadata_footer)
     builder.append('__footer__', footer_block)
 

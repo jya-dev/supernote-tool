@@ -191,6 +191,9 @@ class Page:
     def get_style(self):
         return self.metadata.get('PAGESTYLE')
 
+    def get_style_hash(self):
+        return self.metadata.get('PAGESTYLEMD5')
+
     def get_layer_info(self):
         info = self.metadata.get('LAYERINFO')
         if info is None or info == 'none':
