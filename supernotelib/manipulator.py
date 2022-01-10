@@ -18,7 +18,7 @@ import os
 import re
 
 from . import fileformat
-
+from . import utils
 
 class NotebookBuilder:
     def __init__(self, offset=0):
@@ -86,18 +86,13 @@ def reconstruct(notebook):
     # pages
     for i in range(notebook.get_total_pages()):
         page = notebook.get_page(i)
+        page = utils.WorkaroundPageWrapper.from_page(page)
         # layers
-        visited_mainlayer = False # workaround for dulicated layer name
         layers = page.get_layers()
         for layer in layers:
             layer_name = layer.get_name()
             if layer_name is None:
                 continue
-            if visited_mainlayer and layer_name == 'MAINLAYER':
-                # this layer has duplicated name, so we guess this layer is BGLAYER
-                layer_name = 'BGLAYER'
-            elif layer_name == 'MAINLAYER':
-                visited_mainlayer = True
             if layer_name == 'BGLAYER':
                 style = page.get_style()
                 layer_metadata = layer.metadata
@@ -228,17 +223,11 @@ def _extract_background_properties(footer):
     return props
 
 def _get_background_content_from_page(page):
+    page = utils.WorkaroundPageWrapper.from_page(page)
     if not page.is_layer_supported():
         return None
-    visited_mainlayer = False # workaround for dulicated layer name
     layers = page.get_layers()
     for l in layers:
-        layer_name = l.get_name()
-        if visited_mainlayer and layer_name == 'MAINLAYER':
-            # this layer has duplicated name, so we guess this layer is BGLAYER
-            layer_name = 'BGLAYER'
-        elif layer_name == 'MAINLAYER':
-            visited_mainlayer = True
-        if layer_name == 'BGLAYER':
+        if l.get_name() == 'BGLAYER':
             return l.get_content()
     return None
