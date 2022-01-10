@@ -77,8 +77,7 @@ def reconstruct(notebook):
         page = notebook.get_page(i)
         style = page.get_style()
         if style.startswith('user_'):
-            md5sum = page.get_style_hash()
-            style += md5sum
+            style += page.get_style_hash()
         content = _find_background_content_from_page(page)
         if content is not None:
             builder.append(f'STYLE_{style}', content)
@@ -95,6 +94,8 @@ def reconstruct(notebook):
                 continue
             if layer_name == 'BGLAYER':
                 style = page.get_style()
+                if style.startswith('user_'):
+                    style += page.get_style_hash()
                 layer_metadata = layer.metadata
                 layer_metadata['LAYERNAME'] = layer_name
                 layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'STYLE_{style}'))
