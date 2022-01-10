@@ -64,15 +64,24 @@ def reconstruct(notebook):
         raise ValueError('Only latest file format version is supported')
 
     builder = NotebookBuilder()
+    _pack_signature(builder, notebook)
+    _pack_header(builder, notebook)
+    _pack_backgrounds(builder, notebook)
+    _pack_pages(builder, notebook)
+    _pack_footer(builder)
+    _pack_footer_address(builder)
+    return builder.build()
 
-    # signature
+def _pack_signature(builder, notebook):
+    metadata = notebook.get_metadata()
     builder.append('__signature__', metadata.signature.encode('ascii'), skip_block_size=True)
 
-    # header
+def _pack_header(builder, notebook):
+    metadata = notebook.get_metadata()
     header_block = _construct_metadata_block(metadata.header)
     builder.append('__header__', header_block)
 
-    # background images
+def _pack_backgrounds(builder, notebook):
     for i in range(notebook.get_total_pages()):
         page = notebook.get_page(i)
         style = page.get_style()
@@ -82,7 +91,7 @@ def reconstruct(notebook):
         if content is not None:
             builder.append(f'STYLE_{style}', content)
 
-    # pages
+def _pack_pages(builder, notebook):
     for i in range(notebook.get_total_pages()):
         page = notebook.get_page(i)
         page = utils.WorkaroundPageWrapper.from_page(page)
@@ -113,7 +122,6 @@ def reconstruct(notebook):
         totalpath_block = page.get_totalpath()
         if totalpath_block is not None:
             builder.append(f'PAGE{i+1}/TOTALPATH', totalpath_block)
-
         # page metadata
         page_metadata = page.metadata
         del page_metadata['__layers__']
@@ -124,7 +132,7 @@ def reconstruct(notebook):
         page_metadata_block = _construct_metadata_block(page_metadata)
         builder.append(f'PAGE{i+1}/metadata', page_metadata_block)
 
-    # footer
+def _pack_footer(builder):
     metadata_footer = {}
     metadata_footer.setdefault('FILE_FEATURE', builder.get_block_address('__header__'))
     for label in builder.get_labels():
@@ -141,11 +149,9 @@ def reconstruct(notebook):
     footer_block = _construct_metadata_block(metadata_footer)
     builder.append('__footer__', footer_block)
 
-    # footer address
+def _pack_footer_address(builder):
     footer_address = builder.get_block_address('__footer__')
     builder.append('__footer_address__', footer_address.to_bytes(4, 'little'), skip_block_size=True)
-
-    return builder.build()
 
 
 def merge(notebook1, notebook2):
