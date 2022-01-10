@@ -79,7 +79,7 @@ def reconstruct(notebook):
         if style.startswith('user_'):
             md5sum = page.get_style_hash()
             style += md5sum
-        content = _get_background_content_from_page(page)
+        content = _find_background_content_from_page(page)
         if content is not None:
             builder.append(f'STYLE_{style}', content)
 
@@ -172,13 +172,13 @@ def merge(notebook1, notebook2):
     for i in range(total_pages1):
         page = notebook1.get_page(i)
         style = page.get_style()
-        bg_binary = _get_background_content_from_page(page)
+        bg_binary = _find_background_content_from_page(page)
         bg_table.setdefault(style, bg_binary)
     total_pages2 = metadata2.get_total_pages()
     for i in range(total_pages2):
         page = notebook2.get_page(i)
         style = page.get_style()
-        bg_binary = _get_background_content_from_page(page)
+        bg_binary = _find_background_content_from_page(page)
         bg_table.setdefault(style, bg_binary)
 
     for style, content in bg_table.items():
@@ -222,7 +222,7 @@ def _extract_background_properties(footer):
             props[k] = int(v)
     return props
 
-def _get_background_content_from_page(page):
+def _find_background_content_from_page(page):
     page = utils.WorkaroundPageWrapper.from_page(page)
     if not page.is_layer_supported():
         return None
