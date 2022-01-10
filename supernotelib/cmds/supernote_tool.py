@@ -89,8 +89,9 @@ def subcommand_convert(args):
 def subcommand_merge(args):
     notebook1 = sn.load_notebook(args.input1, policy=args.policy)
     notebook2 = sn.load_notebook(args.input2, policy=args.policy)
-    merged_notebook = sn.merge(notebook1, notebook2)
-    # sn.save_as_note(merged_notebook, args.output)
+    merged_binary = sn.merge(notebook1, notebook2)
+    with open(args.output, 'wb') as f:
+        f.write(merged_binary)
 
 def subcommand_reconstruct(args):
     notebook = sn.load_notebook(args.input)

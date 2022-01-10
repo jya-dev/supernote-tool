@@ -72,6 +72,33 @@ def reconstruct(notebook):
     _pack_footer_address(builder)
     return builder.build()
 
+def merge(notebook1, notebook2):
+    """Merge multiple notebooks to one."""
+    # TODO: support non-X series
+    metadata1 = notebook1.get_metadata()
+    metadata2 = notebook2.get_metadata()
+    if metadata1.signature != metadata2.signature:
+        raise ValueError('File signature must be same between merging files')
+    # check header properties are same to avoid generating a corrupted note file
+    _verify_header_property('FILE_TYPE', metadata1, metadata2)
+    _verify_header_property('APPLY_EQUIPMENT', metadata1, metadata2)
+    _verify_header_property('DEVICE_DPI', metadata1, metadata2)
+    _verify_header_property('SOFT_DPI', metadata1, metadata2)
+    _verify_header_property('FILE_PARSE_TYPE', metadata1, metadata2)
+    _verify_header_property('RATTA_ETMD', metadata1, metadata2)
+    _verify_header_property('APP_VERSION', metadata1, metadata2)
+
+    builder = NotebookBuilder()
+    _pack_signature(builder, notebook1)
+    _pack_header(builder, notebook1)
+    _pack_backgrounds(builder, notebook1)
+    _pack_backgrounds(builder, notebook2)
+    _pack_pages(builder, notebook1)
+    _pack_pages(builder, notebook2, offset=notebook1.get_total_pages())
+    _pack_footer(builder)
+    _pack_footer_address(builder)
+    return builder.build()
+
 def _pack_signature(builder, notebook):
     metadata = notebook.get_metadata()
     builder.append('__signature__', metadata.signature.encode('ascii'), skip_block_size=True)
@@ -91,8 +118,9 @@ def _pack_backgrounds(builder, notebook):
         if content is not None:
             builder.append(f'STYLE_{style}', content)
 
-def _pack_pages(builder, notebook):
+def _pack_pages(builder, notebook, offset=0):
     for i in range(notebook.get_total_pages()):
+        page_number = i + 1 + offset
         page = notebook.get_page(i)
         page = utils.WorkaroundPageWrapper.from_page(page)
         # layers
@@ -109,28 +137,28 @@ def _pack_pages(builder, notebook):
                 layer_metadata['LAYERNAME'] = layer_name
                 layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'STYLE_{style}'))
                 layer_metadata_block = _construct_metadata_block(layer_metadata)
-                builder.append(f'PAGE{i+1}/{layer_name}/metadata', layer_metadata_block)
+                builder.append(f'PAGE{page_number}/{layer_name}/metadata', layer_metadata_block)
             else:
                 content = layer.get_content()
-                builder.append(f'PAGE{i+1}/{layer_name}/LAYERBITMAP', content)
+                builder.append(f'PAGE{page_number}/{layer_name}/LAYERBITMAP', content)
                 layer_metadata = layer.metadata
                 layer_metadata['LAYERNAME'] = layer_name
-                layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'PAGE{i+1}/{layer_name}/LAYERBITMAP'))
+                layer_metadata['LAYERBITMAP'] = str(builder.get_block_address(f'PAGE{page_number}/{layer_name}/LAYERBITMAP'))
                 layer_metadata_block = _construct_metadata_block(layer_metadata)
-                builder.append(f'PAGE{i+1}/{layer_name}/metadata', layer_metadata_block)
+                builder.append(f'PAGE{page_number}/{layer_name}/metadata', layer_metadata_block)
         # totalpath
         totalpath_block = page.get_totalpath()
         if totalpath_block is not None:
-            builder.append(f'PAGE{i+1}/TOTALPATH', totalpath_block)
+            builder.append(f'PAGE{page_number}/TOTALPATH', totalpath_block)
         # page metadata
         page_metadata = page.metadata
         del page_metadata['__layers__']
         for prop in ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']:
-            address = builder.get_block_address(f'PAGE{i+1}/{prop}/metadata')
+            address = builder.get_block_address(f'PAGE{page_number}/{prop}/metadata')
             page_metadata[prop] = address
-        page_metadata['TOTALPATH'] = builder.get_block_address(f'PAGE{i+1}/TOTALPATH')
+        page_metadata['TOTALPATH'] = builder.get_block_address(f'PAGE{page_number}/TOTALPATH')
         page_metadata_block = _construct_metadata_block(page_metadata)
-        builder.append(f'PAGE{i+1}/metadata', page_metadata_block)
+        builder.append(f'PAGE{page_number}/metadata', page_metadata_block)
 
 def _pack_footer(builder):
     metadata_footer = {}
@@ -153,61 +181,6 @@ def _pack_footer_address(builder):
     footer_address = builder.get_block_address('__footer__')
     builder.append('__footer_address__', footer_address.to_bytes(4, 'little'), skip_block_size=True)
 
-
-def merge(notebook1, notebook2):
-    """Merge multiple notebooks to one."""
-    # TODO: support non-X series
-    metadata1 = notebook1.get_metadata()
-    metadata2 = notebook2.get_metadata()
-    if metadata1.signature != metadata2.signature:
-        raise ValueError('File signature must be same between merging files')
-    # check header properties are same to avoid generating a corrupted note file
-    _verify_header_property('FILE_TYPE', metadata1, metadata2)
-    _verify_header_property('APPLY_EQUIPMENT', metadata1, metadata2)
-    _verify_header_property('DEVICE_DPI', metadata1, metadata2)
-    _verify_header_property('SOFT_DPI', metadata1, metadata2)
-    _verify_header_property('FILE_PARSE_TYPE', metadata1, metadata2)
-    _verify_header_property('RATTA_ETMD', metadata1, metadata2)
-    _verify_header_property('APP_VERSION', metadata1, metadata2)
-
-    merging_blocks = []
-    merging_blocks.append(metadata1.signature)
-    merging_blocks.append(_construct_metadata_block(metadata1.header))
-
-    bg_table = {}
-    total_pages1 = notebook1.get_total_pages()
-    for i in range(total_pages1):
-        page = notebook1.get_page(i)
-        style = page.get_style()
-        bg_binary = _find_background_content_from_page(page)
-        bg_table.setdefault(style, bg_binary)
-    total_pages2 = metadata2.get_total_pages()
-    for i in range(total_pages2):
-        page = notebook2.get_page(i)
-        style = page.get_style()
-        bg_binary = _find_background_content_from_page(page)
-        bg_table.setdefault(style, bg_binary)
-
-    for style, content in bg_table.items():
-        merging_blocks.append(content)
-
-    # NOTE: we don't need this?
-    background_props1 = _extract_background_properties(metadata1.footer)
-    background_props2 = _extract_background_properties(metadata2.footer)
-
-    # TODO: implement here
-    total_pages1 = metadata1.get_total_pages()
-
-    merged_total_pages = metadata1.get_total_pages() + metadata2.get_total_pages()
-
-    print(merged_metadata.to_json(indent=2))
-
-    return notebook1
-
-def save_as_note(notebook, filename):
-    """Save a notebook object as a note file."""
-    raise NotImplementedError('function is not implemented yet')
-
 def _verify_header_property(prop_name, metadata1, metadata2):
     if metadata1.header.get(prop_name) != metadata2.header.get(prop_name):
         raise ValueError(f'<{prop_name}> property must be same between merging files')
@@ -221,13 +194,6 @@ def _construct_metadata_block(info):
         else:
             block_data += f'<{k}:{v}>'
     return block_data.encode('ascii')
-
-def _extract_background_properties(footer):
-    props = {}
-    for k, v in footer.items():
-        if k.startswith('STYLE_'):
-            props[k] = int(v)
-    return props
 
 def _find_background_content_from_page(page):
     page = utils.WorkaroundPageWrapper.from_page(page)
