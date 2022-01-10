@@ -87,8 +87,8 @@ def subcommand_convert(args):
             save(data, args.output)
 
 def subcommand_merge(args):
-    notebook1 = sn.load_notebook(args.input1, policy=args.policy)
-    notebook2 = sn.load_notebook(args.input2, policy=args.policy)
+    notebook1 = sn.load_notebook(args.input1)
+    notebook2 = sn.load_notebook(args.input2)
     merged_binary = sn.merge(notebook1, notebook2)
     with open(args.output, 'wb') as f:
         f.write(merged_binary)
@@ -137,7 +137,6 @@ def main():
     parser_merge.add_argument('input1', type=str, help='1st input note file')
     parser_merge.add_argument('input2', type=str, help='2nd input note file')
     parser_merge.add_argument('output', type=str, help='output note file')
-    parser_merge.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_merge.set_defaults(handler=subcommand_merge)
 
     # 'reconstruct' subcommand
