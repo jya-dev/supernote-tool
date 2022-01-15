@@ -126,6 +126,11 @@ class Notebook:
         self.metadata = metadata
         self.signature = metadata.signature
         self.cover = Cover()
+        self.keywords = []
+        has_keywords = metadata.footer.get(KEY_KEYWORDS) is not None
+        if has_keywords:
+            for k in metadata.footer.get(KEY_KEYWORDS):
+                self.keywords.append(Keyword(k))
         self.pages = []
         total = metadata.get_total_pages()
         for i in range(total):
@@ -148,6 +153,9 @@ class Notebook:
     def get_cover(self):
         return self.cover
 
+    def get_keywords(self):
+        return self.keywords
+
 class Cover:
     def __init__(self):
         self.content = None
@@ -157,6 +165,25 @@ class Cover:
 
     def get_content(self):
         return self.content
+
+class Keyword:
+    def __init__(self, keyword_info):
+        self.metadata = keyword_info
+        self.content = None
+        self.page_number = int(self.metadata['KEYWORDPAGE']) - 1
+        self.position = int(self.metadata['KEYWORDRECT'].split(',')[1]) # get top value from "left,top,width,height"
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def get_page_number(self):
+        return self.page_number
+
+    def get_position(self):
+        return self.position
 
 class Page:
     def __init__(self, page_info):

@@ -30,23 +30,42 @@ class NotebookBuilder:
         return self.total_size
 
     def get_block_address(self, label):
-        address = self.toc.get(label)
+        if type(self.toc.get(label)) == list:
+            address = self.toc.get(label)[0] # use first one
+        else:
+            address = self.toc.get(label)
         return address if address is not None else 0
+
+    def get_duplicate_block_address_list(self, label):
+        if type(self.toc.get(label)) == list:
+            return self.toc.get(label)
+        else:
+            return [self.toc.get(label)]
 
     def get_labels(self):
         return self.toc.keys()
 
-    def append(self, label, block, skip_block_size=False):
-        if block is None:
-            return
+    def append(self, label, block, skip_block_size=False, allow_duplicate=False):
+        if not label or block is None:
+            raise ValueError('empty label or block is not allowed')
+        label_duplicated = label in self.toc
+        if label_duplicated and not allow_duplicate:
+            return False
         block_size = len(block)
         if not skip_block_size:
             self.blocks.append(block_size.to_bytes(fileformat.LENGTH_FIELD_SIZE, 'little'))
         self.blocks.append(block)
-        self.toc.setdefault(label, self.total_size)
+        if label_duplicated:
+            if type(self.toc[label]) == list:
+                self.toc[label].append(self.total_size)
+            else:
+                self.toc[label] = [self.toc[label], self.total_size]
+        else:
+            self.toc.setdefault(label, self.total_size)
         self.total_size += block_size
         if not skip_block_size:
             self.total_size += fileformat.LENGTH_FIELD_SIZE
+        return True
 
     def build(self):
         return b''.join(self.blocks)
@@ -67,6 +86,8 @@ def reconstruct(notebook):
     _pack_signature(builder, notebook)
     _pack_header(builder, notebook)
     _pack_cover(builder, notebook)
+    _pack_keywords(builder, notebook)
+    _pack_titles(builder, notebook)
     _pack_backgrounds(builder, notebook)
     _pack_pages(builder, notebook)
     _pack_footer(builder)
@@ -93,6 +114,9 @@ def merge(notebook1, notebook2):
     _pack_signature(builder, notebook1)
     _pack_header(builder, notebook1)
     _pack_cover(builder, notebook1)
+    _pack_keywords(builder, notebook1)
+    _pack_keywords(builder, notebook2, offset=notebook1.get_total_pages())
+    _pack_titles(builder, notebook1)
     _pack_backgrounds(builder, notebook1)
     _pack_backgrounds(builder, notebook2)
     _pack_pages(builder, notebook1)
@@ -115,6 +139,26 @@ def _pack_cover(builder, notebook):
     cover_block = notebook.get_cover().get_content()
     if cover_block is not None:
         builder.append('COVER_1', cover_block)
+
+def _pack_keywords(builder, notebook, offset=0):
+    for keyword in notebook.get_keywords():
+        page_number = keyword.get_page_number() + 1 + offset
+        if page_number > 9999:
+            # the number of digits is limited to 4, so we ignore this keyword
+            continue
+        position = keyword.get_position()
+        id = f'{page_number:04d}{position:04d}'
+        content = keyword.get_content()
+        if content is not None:
+            builder.append(f'KEYWORD_{id}', content, allow_duplicate=True)
+            keyword_metadata = keyword.metadata
+            keyword_metadata['KEYWORDPAGE'] = page_number
+            keyword_metadata_block = _construct_metadata_block(keyword_metadata)
+            builder.append(f'KEYWORD_{id}/metadata', keyword_metadata_block, allow_duplicate=True)
+
+def _pack_titles(builder, notebook, offset=0):
+    # TODO: implement here
+    pass
 
 def _pack_backgrounds(builder, notebook):
     for i in range(notebook.get_total_pages()):
@@ -176,7 +220,15 @@ def _pack_footer(builder):
         metadata_footer['COVER_0'] = 0
     else:
         metadata_footer['COVER_1'] = address
-    # TODO: support KEYWORD, TITLE
+    for label in builder.get_labels():
+        if re.match(r'KEYWORD_\d{8}/metadata', label):
+            address_list = builder.get_duplicate_block_address_list(label)
+            label = label[:-len('/metadata')]
+            if len(address_list) == 1:
+                metadata_footer.setdefault(label, address_list[0])
+            else:
+                metadata_footer[label] = address_list
+    # TODO: support TITLE
     for label in builder.get_labels():
         if label.startswith('STYLE_'):
             address = builder.get_block_address(label)
@@ -205,7 +257,7 @@ def _construct_metadata_block(info):
                 block_data += f'<{k}:{e}>'
         else:
             block_data += f'<{k}:{v}>'
-    return block_data.encode('ascii')
+    return block_data.encode('utf-8')
 
 def _find_background_content_from_page(page):
     page = utils.WorkaroundPageWrapper.from_page(page)

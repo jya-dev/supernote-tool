@@ -92,6 +92,11 @@ def load_notebook(file_name, metadata=None, policy='strict'):
         if cover_address > 0:
             content = _get_content_at_address(f, cover_address)
             note.get_cover().set_content(content)
+        # store keyword data to notebook object
+        for keyword in note.get_keywords():
+            address = _get_keyword_address(keyword)
+            content = _get_content_at_address(f, address)
+            keyword.set_content(content)
         page_total = metadata.get_total_pages()
         for p in range(page_total):
             addresses = _get_bitmap_address(metadata, p)
@@ -130,6 +135,16 @@ def _get_cover_address(metadata):
     else:
         address = 0
     return address
+
+def _get_keyword_address(keyword):
+    """Returns keyword content address.
+
+    Returns
+    -------
+    int
+        keyword content address
+    """
+    return int(keyword.metadata['KEYWORDSITE'])
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
