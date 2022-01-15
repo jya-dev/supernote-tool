@@ -66,6 +66,7 @@ def reconstruct(notebook):
     builder = NotebookBuilder()
     _pack_signature(builder, notebook)
     _pack_header(builder, notebook)
+    _pack_cover(builder, notebook)
     _pack_backgrounds(builder, notebook)
     _pack_pages(builder, notebook)
     _pack_footer(builder)
@@ -91,6 +92,7 @@ def merge(notebook1, notebook2):
     builder = NotebookBuilder()
     _pack_signature(builder, notebook1)
     _pack_header(builder, notebook1)
+    _pack_cover(builder, notebook1)
     _pack_backgrounds(builder, notebook1)
     _pack_backgrounds(builder, notebook2)
     _pack_pages(builder, notebook1)
@@ -107,6 +109,12 @@ def _pack_header(builder, notebook):
     metadata = notebook.get_metadata()
     header_block = _construct_metadata_block(metadata.header)
     builder.append('__header__', header_block)
+
+def _pack_cover(builder, notebook):
+    metadata = notebook.get_metadata()
+    cover_block = notebook.get_cover().get_content()
+    if cover_block is not None:
+        builder.append('COVER_1', cover_block)
 
 def _pack_backgrounds(builder, notebook):
     for i in range(notebook.get_total_pages()):
@@ -163,6 +171,12 @@ def _pack_pages(builder, notebook, offset=0):
 def _pack_footer(builder):
     metadata_footer = {}
     metadata_footer.setdefault('FILE_FEATURE', builder.get_block_address('__header__'))
+    address = builder.get_block_address('COVER_1')
+    if address == 0:
+        metadata_footer['COVER_0'] = 0
+    else:
+        metadata_footer['COVER_1'] = address
+    # TODO: support KEYWORD, TITLE
     for label in builder.get_labels():
         if label.startswith('STYLE_'):
             address = builder.get_block_address(label)
@@ -172,8 +186,6 @@ def _pack_footer(builder):
             address = builder.get_block_address(label)
             label = label[:-len('/metadata')]
             metadata_footer.setdefault(label, address)
-    metadata_footer['COVER_0'] = 0 # TODO: support COVER_1
-    # TODO: support KEYWORD, TITLE
     footer_block = _construct_metadata_block(metadata_footer)
     builder.append('__footer__', footer_block)
 

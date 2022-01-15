@@ -125,6 +125,7 @@ class Notebook:
     def __init__(self, metadata):
         self.metadata = metadata
         self.signature = metadata.signature
+        self.cover = Cover()
         self.pages = []
         total = metadata.get_total_pages()
         for i in range(total):
@@ -144,6 +145,18 @@ class Notebook:
             raise IndexError(f'page number out of range: {number}')
         return self.pages[number]
 
+    def get_cover(self):
+        return self.cover
+
+class Cover:
+    def __init__(self):
+        self.content = None
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
 
 class Page:
     def __init__(self, page_info):
