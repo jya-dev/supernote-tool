@@ -153,6 +153,11 @@ def _pack_keywords(builder, notebook, offset=0):
             builder.append(f'KEYWORD_{id}', content, allow_duplicate=True)
             keyword_metadata = keyword.metadata
             keyword_metadata['KEYWORDPAGE'] = page_number
+            address_list = builder.get_duplicate_block_address_list(f'KEYWORD_{id}')
+            if len(address_list) == 1:
+                keyword_metadata['KEYWORDSITE'] = str(address_list[0])
+            else:
+                keyword_metadata['KEYWORDSITE'] = str(address_list[-1]) # use last address
             keyword_metadata_block = _construct_metadata_block(keyword_metadata)
             builder.append(f'KEYWORD_{id}/metadata', keyword_metadata_block, allow_duplicate=True)
 
