@@ -117,6 +117,7 @@ def merge(notebook1, notebook2):
     _pack_keywords(builder, notebook1)
     _pack_keywords(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_titles(builder, notebook1)
+    _pack_titles(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_backgrounds(builder, notebook1)
     _pack_backgrounds(builder, notebook2)
     _pack_pages(builder, notebook1)
@@ -162,8 +163,24 @@ def _pack_keywords(builder, notebook, offset=0):
             builder.append(f'KEYWORD_{id}/metadata', keyword_metadata_block, allow_duplicate=True)
 
 def _pack_titles(builder, notebook, offset=0):
-    # TODO: implement here
-    pass
+    for title in notebook.get_titles():
+        page_number = title.get_page_number() + 1 + offset
+        if page_number > 9999:
+            # the number of digits is limited to 4, so we ignore this keyword
+            continue
+        position = title.get_position()
+        id = f'{page_number:04d}{position:04d}'
+        content = title.get_content()
+        if content is not None:
+            builder.append(f'TITLE_{id}', content, allow_duplicate=True)
+            title_metadata = title.metadata
+            address_list = builder.get_duplicate_block_address_list(f'TITLE_{id}')
+            if len(address_list) == 1:
+                title_metadata['TITLEBITMAP'] = str(address_list[0])
+            else:
+                title_metadata['TITLEBITMAP'] = str(address_list[-1]) # use last address
+            title_metadata_block = _construct_metadata_block(title_metadata)
+            builder.append(f'TITLE_{id}/metadata', title_metadata_block, allow_duplicate=True)
 
 def _pack_backgrounds(builder, notebook):
     for i in range(notebook.get_total_pages()):
@@ -233,7 +250,14 @@ def _pack_footer(builder):
                 metadata_footer.setdefault(label, address_list[0])
             else:
                 metadata_footer[label] = address_list
-    # TODO: support TITLE
+    for label in builder.get_labels():
+        if re.match(r'TITLE_\d{8}/metadata', label):
+            address_list = builder.get_duplicate_block_address_list(label)
+            label = label[:-len('/metadata')]
+            if len(address_list) == 1:
+                metadata_footer.setdefault(label, address_list[0])
+            else:
+                metadata_footer[label] = address_list
     for label in builder.get_labels():
         if label.startswith('STYLE_'):
             address = builder.get_block_address(label)

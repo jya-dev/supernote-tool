@@ -97,6 +97,16 @@ def load_notebook(file_name, metadata=None, policy='strict'):
             address = _get_keyword_address(keyword)
             content = _get_content_at_address(f, address)
             keyword.set_content(content)
+        # store title data to notebook object
+        title_keys = filter(lambda k : k.startswith('TITLE_'), note.get_metadata().footer.keys())
+        page_numbers = []
+        for k in title_keys:
+            page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
+        for i, title in enumerate(note.get_titles()):
+            address = _get_title_address(title)
+            content = _get_content_at_address(f, address)
+            title.set_content(content)
+            title.set_page_number(page_numbers[i])
         page_total = metadata.get_total_pages()
         for p in range(page_total):
             addresses = _get_bitmap_address(metadata, p)
@@ -145,6 +155,16 @@ def _get_keyword_address(keyword):
         keyword content address
     """
     return int(keyword.metadata['KEYWORDSITE'])
+
+def _get_title_address(title):
+    """Returns title content address.
+
+    Returns
+    -------
+    int
+        title content address
+    """
+    return int(title.metadata['TITLEBITMAP'])
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
