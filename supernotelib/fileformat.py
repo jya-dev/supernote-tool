@@ -262,7 +262,10 @@ class Page:
         return self.metadata.get('PAGESTYLE')
 
     def get_style_hash(self):
-        return self.metadata.get('PAGESTYLEMD5')
+        hashcode = self.metadata.get('PAGESTYLEMD5')
+        if hashcode == '0':
+            return ''
+        return hashcode
 
     def get_layer_info(self):
         info = self.metadata.get('LAYERINFO')
