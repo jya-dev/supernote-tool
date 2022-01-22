@@ -105,6 +105,8 @@ def merge(notebook1, notebook2):
         raise ValueError(f'Only latest file format version is supported ({metadata1.signature} != {expected_signature})')
     if metadata1.signature != metadata2.signature:
         raise ValueError(f'File signature must be same between merging files ({metadata1.signature} != {metadata2.signature})')
+    if notebook1.get_total_pages() + notebook2.get_total_pages() > 9999:
+        raise ValueError('The total number of pages are limited to 9999')
     # check header properties are same to avoid generating a corrupted note file
     _verify_header_property('FILE_TYPE', metadata1, metadata2)
     _verify_header_property('APPLY_EQUIPMENT', metadata1, metadata2)
