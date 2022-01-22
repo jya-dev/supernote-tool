@@ -133,14 +133,30 @@ def main():
     parser_convert.set_defaults(handler=subcommand_convert)
 
     # 'merge' subcommand
-    parser_merge = subparsers.add_parser('merge', help='merge multiple note files')
+    description = \
+        '''
+        (EXPERIMENTAL FEATURE)
+        This command merge multiple note files to one.
+        Backup your input files to save your data because you might get a corrupted output file.
+        '''
+    parser_merge = subparsers.add_parser('merge',
+                                         description=description,
+                                         help='merge multiple note files (EXPERIMENTAL FEATURE)')
     parser_merge.add_argument('input1', type=str, help='1st input note file')
     parser_merge.add_argument('input2', type=str, help='2nd input note file')
     parser_merge.add_argument('output', type=str, help='output note file')
     parser_merge.set_defaults(handler=subcommand_merge)
 
     # 'reconstruct' subcommand
-    parser_reconstruct = subparsers.add_parser('reconstruct', help='reconstruct a note file for debug')
+    description = \
+        '''
+        (EXPERIMENTAL FEATURE)
+        This command disassemble and reconstruct a note file for debugging and testing.
+        Backup your input file to save your data because you might get a corrupted output file.
+        '''
+    parser_reconstruct = subparsers.add_parser('reconstruct',
+                                               description=description,
+                                               help='reconstruct a note file (EXPERIMENTAL FEATURE)')
     parser_reconstruct.add_argument('input', type=str, help='input note file')
     parser_reconstruct.add_argument('output', type=str, help='output note file')
     parser_reconstruct.set_defaults(handler=subcommand_reconstruct)
