@@ -125,6 +125,17 @@ class Notebook:
     def __init__(self, metadata):
         self.metadata = metadata
         self.signature = metadata.signature
+        self.cover = Cover()
+        self.keywords = []
+        has_keywords = metadata.footer.get(KEY_KEYWORDS) is not None
+        if has_keywords:
+            for k in metadata.footer.get(KEY_KEYWORDS):
+                self.keywords.append(Keyword(k))
+        self.titles = []
+        has_titles = metadata.footer.get(KEY_TITLES) is not None
+        if has_titles:
+            for t in metadata.footer.get(KEY_TITLES):
+                self.titles.append(Title(t))
         self.pages = []
         total = metadata.get_total_pages()
         for i in range(total):
@@ -144,11 +155,71 @@ class Notebook:
             raise IndexError(f'page number out of range: {number}')
         return self.pages[number]
 
+    def get_cover(self):
+        return self.cover
+
+    def get_keywords(self):
+        return self.keywords
+
+    def get_titles(self):
+        return self.titles
+
+class Cover:
+    def __init__(self):
+        self.content = None
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+class Keyword:
+    def __init__(self, keyword_info):
+        self.metadata = keyword_info
+        self.content = None
+        self.page_number = int(self.metadata['KEYWORDPAGE']) - 1
+        self.position = int(self.metadata['KEYWORDRECT'].split(',')[1]) # get top value from "left,top,width,height"
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def get_page_number(self):
+        return self.page_number
+
+    def get_position(self):
+        return self.position
+
+class Title:
+    def __init__(self, title_info):
+        self.metadata = title_info
+        self.content = None
+        self.page_number = 0
+        self.position = int(self.metadata['TITLERECTORI'].split(',')[1]) # get top value from "left,top,width,height"
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def set_page_number(self, page_number):
+        self.page_number = page_number
+
+    def get_page_number(self):
+        return self.page_number
+
+    def get_position(self):
+        return self.position
 
 class Page:
     def __init__(self, page_info):
         self.metadata = page_info
         self.content = None
+        self.totalpath = None
         self.layers = []
         layer_supported = page_info.get(KEY_LAYERS) is not None
         if layer_supported:
@@ -190,6 +261,12 @@ class Page:
     def get_style(self):
         return self.metadata.get('PAGESTYLE')
 
+    def get_style_hash(self):
+        hashcode = self.metadata.get('PAGESTYLEMD5')
+        if hashcode == '0':
+            return ''
+        return hashcode
+
     def get_layer_info(self):
         info = self.metadata.get('LAYERINFO')
         if info is None or info == 'none':
@@ -203,6 +280,11 @@ class Page:
         order = seq.split(',')
         return order
 
+    def set_totalpath(self, totalpath):
+        self.totalpath = totalpath
+
+    def get_totalpath(self):
+        return self.totalpath
 
 class Layer:
     def __init__(self, layer_info):

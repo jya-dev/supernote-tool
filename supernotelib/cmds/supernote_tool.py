@@ -86,6 +86,19 @@ def subcommand_convert(args):
             data = converter.convert(args.number, vectorize)
             save(data, args.output)
 
+def subcommand_merge(args):
+    notebook1 = sn.load_notebook(args.input1)
+    notebook2 = sn.load_notebook(args.input2)
+    merged_binary = sn.merge(notebook1, notebook2)
+    with open(args.output, 'wb') as f:
+        f.write(merged_binary)
+
+def subcommand_reconstruct(args):
+    notebook = sn.load_notebook(args.input)
+    reconstructed_binary = sn.reconstruct(notebook)
+    with open(args.output, 'wb') as f:
+        f.write(reconstructed_binary)
+
 def parse_color(color_string):
     colorcodes = color_string.split(',')
     if len(colorcodes) != 4:
@@ -118,6 +131,35 @@ def main():
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
+
+    # 'merge' subcommand
+    description = \
+        '''
+        (EXPERIMENTAL FEATURE)
+        This command merge multiple note files to one.
+        Backup your input files to save your data because you might get a corrupted output file.
+        '''
+    parser_merge = subparsers.add_parser('merge',
+                                         description=description,
+                                         help='merge multiple note files (EXPERIMENTAL FEATURE)')
+    parser_merge.add_argument('input1', type=str, help='1st input note file')
+    parser_merge.add_argument('input2', type=str, help='2nd input note file')
+    parser_merge.add_argument('output', type=str, help='output note file')
+    parser_merge.set_defaults(handler=subcommand_merge)
+
+    # 'reconstruct' subcommand
+    description = \
+        '''
+        (EXPERIMENTAL FEATURE)
+        This command disassemble and reconstruct a note file for debugging and testing.
+        Backup your input file to save your data because you might get a corrupted output file.
+        '''
+    parser_reconstruct = subparsers.add_parser('reconstruct',
+                                               description=description,
+                                               help='reconstruct a note file (EXPERIMENTAL FEATURE)')
+    parser_reconstruct.add_argument('input', type=str, help='input note file')
+    parser_reconstruct.add_argument('output', type=str, help='output note file')
+    parser_reconstruct.set_defaults(handler=subcommand_reconstruct)
 
     args = parser.parse_args()
     if hasattr(args, 'handler'):

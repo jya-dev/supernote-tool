@@ -88,6 +88,25 @@ def load_notebook(file_name, metadata=None, policy='strict'):
     note = fileformat.Notebook(metadata)
 
     with open(file_name, 'rb') as f:
+        cover_address = _get_cover_address(metadata)
+        if cover_address > 0:
+            content = _get_content_at_address(f, cover_address)
+            note.get_cover().set_content(content)
+        # store keyword data to notebook object
+        for keyword in note.get_keywords():
+            address = _get_keyword_address(keyword)
+            content = _get_content_at_address(f, address)
+            keyword.set_content(content)
+        # store title data to notebook object
+        title_keys = filter(lambda k : k.startswith('TITLE_'), note.get_metadata().footer.keys())
+        page_numbers = []
+        for k in title_keys:
+            page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
+        for i, title in enumerate(note.get_titles()):
+            address = _get_title_address(title)
+            content = _get_content_at_address(f, address)
+            title.set_content(content)
+            title.set_page_number(page_numbers[i])
         page_total = metadata.get_total_pages()
         for p in range(page_total):
             addresses = _get_bitmap_address(metadata, p)
@@ -98,6 +117,11 @@ def load_notebook(file_name, metadata=None, policy='strict'):
                 for l, addr in enumerate(addresses):
                     content = _get_content_at_address(f, addr)
                     note.get_page(p).get_layer(l).set_content(content)
+            # store path data to notebook object
+            totalpath_address = _get_totalpath_address(metadata, p)
+            if totalpath_address > 0:
+                content = _get_content_at_address(f, totalpath_address)
+                note.get_page(p).set_totalpath(content)
     return note
 
 def _get_content_at_address(fobj, address):
@@ -107,6 +131,40 @@ def _get_content_at_address(fobj, address):
         block_length = int.from_bytes(fobj.read(fileformat.LENGTH_FIELD_SIZE), 'little')
         content = fobj.read(block_length)
     return content
+
+def _get_cover_address(metadata):
+    """Returns cover address.
+
+    Returns
+    -------
+    int
+        cover address
+    """
+    if 'COVER_1' in metadata.footer:
+        address = int(metadata.footer['COVER_1'])
+    else:
+        address = 0
+    return address
+
+def _get_keyword_address(keyword):
+    """Returns keyword content address.
+
+    Returns
+    -------
+    int
+        keyword content address
+    """
+    return int(keyword.metadata['KEYWORDSITE'])
+
+def _get_title_address(title):
+    """Returns title content address.
+
+    Returns
+    -------
+    int
+        title content address
+    """
+    return int(title.metadata['TITLEBITMAP'])
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
@@ -125,6 +183,20 @@ def _get_bitmap_address(metadata, page_number):
     else:
         addresses.append(int(metadata.pages[page_number]['DATA']))
     return addresses
+
+def _get_totalpath_address(metadata, page_number):
+    """Returns total path address of the given page number.
+
+    Returns
+    -------
+    int
+        total path address
+    """
+    if 'TOTALPATH' in metadata.pages[page_number]:
+        address = int(metadata.pages[page_number]['TOTALPATH'])
+    else:
+        address = 0
+    return address
 
 
 class SupernoteParser:

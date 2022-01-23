@@ -19,4 +19,5 @@ from . import converter
 
 from .exceptions import *
 from .fileformat import *
+from .manipulator import *
 from .parser import *
