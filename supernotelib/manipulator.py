@@ -14,10 +14,13 @@
 
 """Note manipulator classes."""
 
+import io
 import os
 import re
 
+from . import exceptions
 from . import fileformat
+from . import parser
 from . import utils
 
 class NotebookBuilder:
@@ -93,7 +96,15 @@ def reconstruct(notebook):
     _pack_pages(builder, notebook)
     _pack_footer(builder)
     _pack_footer_address(builder)
-    return builder.build()
+    reconstructed_binary = builder.build()
+    # check file format integrity
+    try:
+        stream = io.BytesIO(reconstructed_binary)
+        xparser = parser.SupernoteXParser()
+        _ = xparser.parse_stream(stream)
+    except:
+        raise exceptions.GeneratedFileValidationException('generated file fails validation')
+    return reconstructed_binary
 
 def merge(notebook1, notebook2):
     """Merge multiple notebooks to one."""
@@ -130,7 +141,15 @@ def merge(notebook1, notebook2):
     _pack_pages(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_footer(builder)
     _pack_footer_address(builder)
-    return builder.build()
+    merged_binary = builder.build()
+    # check file format integrity
+    try:
+        stream = io.BytesIO(merged_binary)
+        xparser = parser.SupernoteXParser()
+        _ = xparser.parse_stream(stream)
+    except:
+        raise exceptions.GeneratedFileValidationException('generated file fails validation')
+    return merged_binary
 
 def _pack_signature(builder, notebook):
     metadata = notebook.get_metadata()

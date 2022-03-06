@@ -224,24 +224,47 @@ class SupernoteParser:
             metadata of the file
         """
         with open(file_name, 'rb') as f:
-            # check file signature
-            signature = self._find_matching_signature(f)
-            if signature is None:
-                compatible = self._check_signature_compatible(f)
-                if policy != 'loose' or not compatible:
-                    raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
-                else:
-                    signature = self.SN_SIGNATURES[-1] # treat as latest supported signature
-            # parse footer block
-            f.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
-            footer_address = int.from_bytes(f.read(fileformat.ADDRESS_SIZE), 'little')
-            footer = self._parse_footer_block(f, footer_address)
-            # parse header block
-            header_address = self._get_header_address(footer)
-            header = self._parse_metadata_block(f, header_address)
-            # parse page blocks
-            page_addresses = self._get_page_addresses(footer)
-            pages = list(map(lambda addr: self._parse_page_block(f, addr), page_addresses))
+            metadata = self.parse_stream(f, policy)
+        return metadata
+
+    def parse_stream(self, stream, policy='strict'):
+        """Parses a Supernote file stream and returns SupernoteMetadata object.
+
+        Policy:
+        - 'strict': raise exception for unknown signature (default)
+        - 'loose': try to parse for unknown signature
+
+        Parameters
+        ----------
+        file_name : str
+            file path string
+        policy : str
+            signature check policy
+
+        Returns
+        -------
+        SupernoteMetadata
+            metadata of the file
+        """
+        # check file signature
+        signature = self._find_matching_signature(stream)
+        if signature is None:
+            compatible = self._check_signature_compatible(stream)
+            if policy != 'loose' or not compatible:
+                raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
+            else:
+                signature = self.SN_SIGNATURES[-1] # treat as latest supported signature
+        # parse footer block
+        stream.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
+        footer_address = int.from_bytes(stream.read(fileformat.ADDRESS_SIZE), 'little')
+        footer = self._parse_footer_block(stream, footer_address)
+        # parse header block
+        header_address = self._get_header_address(footer)
+        header = self._parse_metadata_block(stream, header_address)
+        # parse page blocks
+        page_addresses = self._get_page_addresses(footer)
+        pages = list(map(lambda addr: self._parse_page_block(stream, addr), page_addresses))
+
         metadata = fileformat.SupernoteMetadata()
         metadata.signature = signature
         metadata.header = header
