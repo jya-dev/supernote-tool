@@ -21,8 +21,8 @@ from . import exceptions
 from . import fileformat
 
 
-def parse_metadata(file_name, policy='strict'):
-    """Parses a supernote file and returns metadata object.
+def parse_metadata(stream, policy='strict'):
+    """Parses a supernote binary stream and returns metadata object.
 
     Policy:
     - 'strict': raise exception for unknown signature (default)
@@ -30,8 +30,8 @@ def parse_metadata(file_name, policy='strict'):
 
     Parameters
     ----------
-    file_name : str
-        file path string
+    stream : file-like object
+        supernote binary stream
     policy : str
         signature check policy
 
@@ -42,7 +42,7 @@ def parse_metadata(file_name, policy='strict'):
     """
     try:
         parser = SupernoteParser()
-        metadata = parser.parse(file_name, policy)
+        metadata = parser.parse_stream(stream, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
         pass
@@ -51,7 +51,7 @@ def parse_metadata(file_name, policy='strict'):
 
     try:
         parser = SupernoteXParser()
-        metadata = parser.parse(file_name, policy)
+        metadata = parser.parse_stream(stream, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
         pass
@@ -60,6 +60,68 @@ def parse_metadata(file_name, policy='strict'):
 
     # we cannot parse the file with any our parser.
     raise exceptions.UnsupportedFileFormat('unsupported file format')
+
+def load(stream, metadata=None, policy='strict'):
+    """Creates a Notebook object from the supernote binary stream.
+
+    Policy:
+    - 'strict': raise exception for unknown signature (default)
+    - 'loose': try to parse for unknown signature
+
+   Parameters
+    ----------
+    stream : file-like object
+        supernote binary stream
+    metadata : SupernoteMetadata
+        metadata object
+    policy : str
+        signature check policy
+
+    Returns
+    -------
+    Notebook
+        notebook object
+    """
+    if metadata is None:
+        metadata = parse_metadata(stream, policy)
+
+    note = fileformat.Notebook(metadata)
+
+    cover_address = _get_cover_address(metadata)
+    if cover_address > 0:
+        content = _get_content_at_address(stream, cover_address)
+        note.get_cover().set_content(content)
+    # store keyword data to notebook object
+    for keyword in note.get_keywords():
+        address = _get_keyword_address(keyword)
+        content = _get_content_at_address(stream, address)
+        keyword.set_content(content)
+    # store title data to notebook object
+    title_keys = filter(lambda k : k.startswith('TITLE_'), note.get_metadata().footer.keys())
+    page_numbers = []
+    for k in title_keys:
+        page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
+    for i, title in enumerate(note.get_titles()):
+        address = _get_title_address(title)
+        content = _get_content_at_address(stream, address)
+        title.set_content(content)
+        title.set_page_number(page_numbers[i])
+    page_total = metadata.get_total_pages()
+    for p in range(page_total):
+        addresses = _get_bitmap_address(metadata, p)
+        if len(addresses) == 1: # the page has no layers
+            content = _get_content_at_address(stream, addresses[0])
+            note.get_page(p).set_content(content)
+        else:
+            for l, addr in enumerate(addresses):
+                content = _get_content_at_address(stream, addr)
+                note.get_page(p).get_layer(l).set_content(content)
+        # store path data to notebook object
+        totalpath_address = _get_totalpath_address(metadata, p)
+        if totalpath_address > 0:
+            content = _get_content_at_address(stream, totalpath_address)
+            note.get_page(p).set_totalpath(content)
+    return note
 
 def load_notebook(file_name, metadata=None, policy='strict'):
     """Creates a Notebook object from the supernote file.
@@ -82,46 +144,8 @@ def load_notebook(file_name, metadata=None, policy='strict'):
     Notebook
         notebook object
     """
-    if metadata is None:
-        metadata = parse_metadata(file_name, policy)
-
-    note = fileformat.Notebook(metadata)
-
     with open(file_name, 'rb') as f:
-        cover_address = _get_cover_address(metadata)
-        if cover_address > 0:
-            content = _get_content_at_address(f, cover_address)
-            note.get_cover().set_content(content)
-        # store keyword data to notebook object
-        for keyword in note.get_keywords():
-            address = _get_keyword_address(keyword)
-            content = _get_content_at_address(f, address)
-            keyword.set_content(content)
-        # store title data to notebook object
-        title_keys = filter(lambda k : k.startswith('TITLE_'), note.get_metadata().footer.keys())
-        page_numbers = []
-        for k in title_keys:
-            page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
-        for i, title in enumerate(note.get_titles()):
-            address = _get_title_address(title)
-            content = _get_content_at_address(f, address)
-            title.set_content(content)
-            title.set_page_number(page_numbers[i])
-        page_total = metadata.get_total_pages()
-        for p in range(page_total):
-            addresses = _get_bitmap_address(metadata, p)
-            if len(addresses) == 1: # the page has no layers
-                content = _get_content_at_address(f, addresses[0])
-                note.get_page(p).set_content(content)
-            else:
-                for l, addr in enumerate(addresses):
-                    content = _get_content_at_address(f, addr)
-                    note.get_page(p).get_layer(l).set_content(content)
-            # store path data to notebook object
-            totalpath_address = _get_totalpath_address(metadata, p)
-            if totalpath_address > 0:
-                content = _get_content_at_address(f, totalpath_address)
-                note.get_page(p).set_totalpath(content)
+        note = load(f, metadata, policy)
     return note
 
 def _get_content_at_address(fobj, address):
@@ -224,24 +248,47 @@ class SupernoteParser:
             metadata of the file
         """
         with open(file_name, 'rb') as f:
-            # check file signature
-            signature = self._find_matching_signature(f)
-            if signature is None:
-                compatible = self._check_signature_compatible(f)
-                if policy != 'loose' or not compatible:
-                    raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
-                else:
-                    signature = self.SN_SIGNATURES[-1] # treat as latest supported signature
-            # parse footer block
-            f.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
-            footer_address = int.from_bytes(f.read(fileformat.ADDRESS_SIZE), 'little')
-            footer = self._parse_footer_block(f, footer_address)
-            # parse header block
-            header_address = self._get_header_address(footer)
-            header = self._parse_metadata_block(f, header_address)
-            # parse page blocks
-            page_addresses = self._get_page_addresses(footer)
-            pages = list(map(lambda addr: self._parse_page_block(f, addr), page_addresses))
+            metadata = self.parse_stream(f, policy)
+        return metadata
+
+    def parse_stream(self, stream, policy='strict'):
+        """Parses a Supernote file stream and returns SupernoteMetadata object.
+
+        Policy:
+        - 'strict': raise exception for unknown signature (default)
+        - 'loose': try to parse for unknown signature
+
+        Parameters
+        ----------
+        file_name : str
+            file path string
+        policy : str
+            signature check policy
+
+        Returns
+        -------
+        SupernoteMetadata
+            metadata of the file
+        """
+        # check file signature
+        signature = self._find_matching_signature(stream)
+        if signature is None:
+            compatible = self._check_signature_compatible(stream)
+            if policy != 'loose' or not compatible:
+                raise exceptions.UnsupportedFileFormat(f'unknown signature: {signature}')
+            else:
+                signature = self.SN_SIGNATURES[-1] # treat as latest supported signature
+        # parse footer block
+        stream.seek(-fileformat.ADDRESS_SIZE, os.SEEK_END) # footer address is located at last 4-byte
+        footer_address = int.from_bytes(stream.read(fileformat.ADDRESS_SIZE), 'little')
+        footer = self._parse_footer_block(stream, footer_address)
+        # parse header block
+        header_address = self._get_header_address(footer)
+        header = self._parse_metadata_block(stream, header_address)
+        # parse page blocks
+        page_addresses = self._get_page_addresses(footer)
+        pages = list(map(lambda addr: self._parse_page_block(stream, addr), page_addresses))
+
         metadata = fileformat.SupernoteMetadata()
         metadata.signature = signature
         metadata.header = header

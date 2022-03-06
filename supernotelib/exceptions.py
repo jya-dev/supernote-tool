@@ -28,3 +28,9 @@ class DecoderException(SupernoteLibException):
 
 class UnknownDecodeProtocol(DecoderException):
     """Raised if decode protocol is unknown."""
+
+class ManipulatorException(SupernoteLibException):
+    """Base class of manipulator exceptions."""
+
+class GeneratedFileValidationException(ManipulatorException):
+    """Raised if generated file is invalid."""
