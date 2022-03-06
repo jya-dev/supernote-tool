@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import io
 import os
 import sys
 
@@ -34,7 +35,8 @@ def convert_all(converter, total, file_name, save_func):
 
 def subcommand_analyze(args):
     # show all metadata as JSON
-    metadata = sn.parse_metadata(args.input, policy=args.policy)
+    with open(args.input, 'rb') as f:
+        metadata = sn.parse_metadata(f, policy=args.policy)
     print(metadata.to_json(indent=2))
 
 def subcommand_convert(args):
@@ -87,11 +89,22 @@ def subcommand_convert(args):
             save(data, args.output)
 
 def subcommand_merge(args):
-    notebook1 = sn.load_notebook(args.input1)
-    notebook2 = sn.load_notebook(args.input2)
-    merged_binary = sn.merge(notebook1, notebook2)
-    with open(args.output, 'wb') as f:
-        f.write(merged_binary)
+    num_input = len(args.input)
+    if num_input == 1:          # reconstruct a note file
+        notebook = sn.load_notebook(args.input[0])
+        reconstructed_binary = sn.reconstruct(notebook)
+        with open(args.output, 'wb') as f:
+            f.write(reconstructed_binary)
+    else:                       # merge multiple note files
+        with open(args.input[0], 'rb') as f:
+            merged_binary = f.read()
+        for i in range(1, num_input):
+            stream = io.BytesIO(merged_binary)
+            merged_notebook = sn.load(stream)
+            next_notebook = sn.load_notebook(args.input[i])
+            merged_binary = sn.merge(merged_notebook, next_notebook)
+        with open(args.output, 'wb') as f:
+            f.write(merged_binary)
 
 def subcommand_reconstruct(args):
     notebook = sn.load_notebook(args.input)
@@ -142,8 +155,7 @@ def main():
     parser_merge = subparsers.add_parser('merge',
                                          description=description,
                                          help='merge multiple note files (EXPERIMENTAL FEATURE)')
-    parser_merge.add_argument('input1', type=str, help='1st input note file')
-    parser_merge.add_argument('input2', type=str, help='2nd input note file')
+    parser_merge.add_argument('input', type=str, nargs='+', help='input note files')
     parser_merge.add_argument('output', type=str, help='output note file')
     parser_merge.set_defaults(handler=subcommand_merge)
 
