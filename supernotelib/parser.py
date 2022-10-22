@@ -106,6 +106,11 @@ def load(stream, metadata=None, policy='strict'):
         content = _get_content_at_address(stream, address)
         title.set_content(content)
         title.set_page_number(page_numbers[i])
+    # store link data to notebook object
+    for link in note.get_links():
+        address = _get_link_address(link)
+        content = _get_content_at_address(stream, address)
+        link.set_content(content)
     page_total = metadata.get_total_pages()
     for p in range(page_total):
         addresses = _get_bitmap_address(metadata, p)
@@ -189,6 +194,16 @@ def _get_title_address(title):
         title content address
     """
     return int(title.metadata['TITLEBITMAP'])
+
+def _get_link_address(link):
+    """Returns link content address.
+
+    Returns
+    -------
+    int
+        link content address
+    """
+    return int(link.metadata['LINKBITMAP'])
 
 def _get_bitmap_address(metadata, page_number):
     """Returns bitmap address of the given page number.
@@ -479,6 +494,11 @@ class SupernoteXParser(SupernoteParser):
         titles = list(map(lambda addr: self._parse_title_block(fobj, addr), title_addresses))
         if titles:
             footer[fileformat.KEY_TITLES] = titles
+        # parse links
+        link_addresses = self._get_link_addresses(footer)
+        links = list(map(lambda addr: self._parse_link_block(fobj, addr), link_addresses))
+        if links:
+            footer[fileformat.KEY_LINKS] = links
         return footer
 
     def _get_keyword_addresses(self, footer):
@@ -505,6 +525,19 @@ class SupernoteXParser(SupernoteParser):
         return title_addresses
 
     def _parse_title_block(self, fobj, address):
+        return self._parse_metadata_block(fobj, address)
+
+    def _get_link_addresses(self, footer):
+        link_keys = filter(lambda k : k.startswith('LINK'), footer.keys())
+        link_addresses = []
+        for k in link_keys:
+            if type(footer[k]) == list:
+                link_addresses.extend(list(map(int, footer[k])))
+            else:
+                link_addresses.append(int(footer[k]))
+        return link_addresses
+
+    def _parse_link_block(self, fobj, address):
         return self._parse_metadata_block(fobj, address)
 
     def _get_page_addresses(self, footer):

@@ -34,6 +34,7 @@ KEY_PAGES = '__pages__'
 KEY_LAYERS = '__layers__'
 KEY_KEYWORDS = '__keywords__'
 KEY_TITLES = '__titles__'
+KEY_LINKS = '__links__'
 
 
 class SupernoteMetadata:
@@ -136,6 +137,11 @@ class Notebook:
         if has_titles:
             for t in metadata.footer.get(KEY_TITLES):
                 self.titles.append(Title(t))
+        self.links = []
+        has_links = metadata.footer.get(KEY_LINKS) is not None
+        if has_links:
+            for l in metadata.footer.get(KEY_LINKS):
+                self.links.append(Link(l))
         self.pages = []
         total = metadata.get_total_pages()
         for i in range(total):
@@ -163,6 +169,9 @@ class Notebook:
 
     def get_titles(self):
         return self.titles
+
+    def get_links(self):
+        return self.links
 
 class Cover:
     def __init__(self):
@@ -214,6 +223,45 @@ class Title:
 
     def get_position(self):
         return self.position
+
+class Link:
+    def __init__(self, link_info):
+        self.metadata = link_info
+        self.content = None
+        self.type = int(self.metadata['LINKTYPE']) # 0: internal link, 1: external link
+        self.inout = int(self.metadata['LINKINOUT']) # 0: OUT, 1: IN
+        self.position = int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
+        self.timestamp = self.metadata['LINKTIMESTAMP']
+        self.filepath = self.metadata['LINKFILE'] # Base64-encoded file path string
+        self.fileid = self.metadata['LINKFILEID']
+        self.pageid = None if self.metadata['PAGEID'] == 'none' else self.metadata['PAGEID']
+
+    def set_content(self, content):
+        self.content = content
+
+    def get_content(self):
+        return self.content
+
+    def get_type(self):
+        return self.type
+
+    def get_inout(self):
+        return self.inout
+
+    def get_position(self):
+        return self.position
+
+    def get_timestamp(self):
+        return self.timestamp
+
+    def get_filepath(self):
+        return self.filepath
+
+    def get_fileid(self):
+        return self.fileid
+
+    def get_pageid(self):
+        return self.pageid
 
 class Page:
     def __init__(self, page_info):
