@@ -462,7 +462,8 @@ class SupernoteXParser(SupernoteParser):
         'noteSN_FILE_VER_20200008', # Firmware version C.237
         'noteSN_FILE_VER_20210009', # Firmware version C.291
         'noteSN_FILE_VER_20210010', # Firmware version Chauvet 2.1.6
-        'noteSN_FILE_VER_20220011'  # Firmware version Chauvet 2.5.17
+        'noteSN_FILE_VER_20220011', # Firmware version Chauvet 2.5.17
+        'noteSN_FILE_VER_20220013'  # Firmware version Chauvet 2.5.18beta or 2.5.19beta
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 
