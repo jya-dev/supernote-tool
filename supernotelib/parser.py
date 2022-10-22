@@ -107,10 +107,15 @@ def load(stream, metadata=None, policy='strict'):
         title.set_content(content)
         title.set_page_number(page_numbers[i])
     # store link data to notebook object
-    for link in note.get_links():
+    link_keys = filter(lambda k : k.startswith('LINK'), note.get_metadata().footer.keys())
+    page_numbers = []
+    for k in link_keys:
+        page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'LINKO_01234567'
+    for i, link in enumerate(note.get_links()):
         address = _get_link_address(link)
         content = _get_content_at_address(stream, address)
         link.set_content(content)
+        link.set_page_number(page_numbers[i])
     page_total = metadata.get_total_pages()
     for p in range(page_total):
         addresses = _get_bitmap_address(metadata, p)

@@ -228,9 +228,12 @@ class Link:
     def __init__(self, link_info):
         self.metadata = link_info
         self.content = None
+        self.page_number = 0
         self.type = int(self.metadata['LINKTYPE']) # 0: internal link, 1: external link
         self.inout = int(self.metadata['LINKINOUT']) # 0: OUT, 1: IN
         self.position = int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
+        (left, top, width, height) = self.metadata['LINKRECT'].split(',')
+        self.rect = (int(left), int(top), int(left) + int(width), int(top) + int(height))
         self.timestamp = self.metadata['LINKTIMESTAMP']
         self.filepath = self.metadata['LINKFILE'] # Base64-encoded file path string
         self.fileid = self.metadata['LINKFILEID']
@@ -242,6 +245,12 @@ class Link:
     def get_content(self):
         return self.content
 
+    def set_page_number(self, page_number):
+        self.page_number = page_number
+
+    def get_page_number(self):
+        return self.page_number
+
     def get_type(self):
         return self.type
 
@@ -250,6 +259,9 @@ class Link:
 
     def get_position(self):
         return self.position
+
+    def get_rect(self):
+        return self.rect
 
     def get_timestamp(self):
         return self.timestamp
@@ -333,6 +345,9 @@ class Page:
 
     def get_totalpath(self):
         return self.totalpath
+
+    def get_pageid(self):
+        return self.metadata.get('PAGEID')
 
 class Layer:
     def __init__(self, layer_info):

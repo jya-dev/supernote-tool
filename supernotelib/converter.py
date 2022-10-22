@@ -307,11 +307,20 @@ class PdfConverter:
                 svglist.append(svg)
             (w, h) = A4
             c = canvas.Canvas(buf, pagesize=portrait(A4))
-            for svg in svglist:
+            for n, svg in enumerate(svglist):
                 drawing = svg2rlg(BytesIO(bytes(svg, 'ascii')))
                 (scale_x, scale_y) = (w / drawing.width, h / drawing.height)
                 drawing.scale(scale_x, scale_y)
                 renderPDF.draw(drawing, c, 0, 0)
+                page = self.note.get_page(n)
+                pageid = page.get_pageid()
+                if pageid is not None:
+                    c.bookmarkPage(pageid)
+                    def link_rectangle(cvs, tag, rect):
+                        (left, top, right, bottom) = rect
+                        cvs.linkAbsolute("Link", tag,
+                                         (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y))
+                    self._add_links(c, n, link_rectangle)
                 c.showPage()
             c.save()
         else:
@@ -327,4 +336,22 @@ class PdfConverter:
             else:
                 img = converter.convert(page_number)
                 img.save(buf, format='PDF')
+            # TODO: handle internal and externel links
         return buf.getvalue()
+
+    def _add_links(self, cvs, page_number, link_func):
+        links = self.note.get_links()
+        for link in links:
+            if link.get_page_number() != page_number:
+                continue
+            if link.get_inout() == 1:
+                continue             # ignore income link
+            if link.get_type() == 0: # internal out link
+                rect = link.get_rect()
+                tag = link.get_pageid()
+                link_func(cvs, tag, rect)
+            elif link.get_type() == 1: # externel out link
+                # TODO: handle external link
+                # c.linkURL(...)
+                pass
+
