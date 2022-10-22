@@ -27,6 +27,7 @@ PAGE_WIDTH = 1404
 ADDRESS_SIZE = 4
 LENGTH_FIELD_SIZE = 4
 
+KEY_TYPE = '__type__'
 KEY_SIGNATURE = '__signature__'
 KEY_HEADER = '__header__'
 KEY_FOOTER = '__footer__'
@@ -41,11 +42,20 @@ class SupernoteMetadata:
     """Represents Supernote file structure."""
     def __init__(self):
         self.__note = {
+            KEY_TYPE: None,
             KEY_SIGNATURE: None,
             KEY_HEADER: None,
             KEY_FOOTER: None,
             KEY_PAGES: None,
         }
+
+    @property
+    def type(self):
+        return self.__note[KEY_TYPE]
+
+    @type.setter
+    def type(self, value):
+        self.__note[KEY_TYPE] = value
 
     @property
     def signature(self):
@@ -125,6 +135,7 @@ class SupernoteMetadata:
 class Notebook:
     def __init__(self, metadata):
         self.metadata = metadata
+        self.type = metadata.type
         self.signature = metadata.signature
         self.cover = Cover()
         self.keywords = []
@@ -149,6 +160,9 @@ class Notebook:
 
     def get_metadata(self):
         return self.metadata
+
+    def get_type(self):
+        return self.type
 
     def get_signature(self):
         return self.signature
