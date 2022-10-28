@@ -173,6 +173,9 @@ class Notebook:
     def get_links(self):
         return self.links
 
+    def get_fileid(self):
+        return self.metadata.header.get('FILE_ID')
+
 class Cover:
     def __init__(self):
         self.content = None
@@ -229,7 +232,7 @@ class Link:
         self.metadata = link_info
         self.content = None
         self.page_number = 0
-        self.type = int(self.metadata['LINKTYPE']) # 0: internal link, 1: external link
+        self.type = int(self.metadata['LINKTYPE']) # 0: page link, 1: file link, 4: web link
         self.inout = int(self.metadata['LINKINOUT']) # 0: OUT, 1: IN
         self.position = int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
         (left, top, width, height) = self.metadata['LINKRECT'].split(',')

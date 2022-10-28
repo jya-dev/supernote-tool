@@ -277,7 +277,7 @@ class PdfConverter:
         self.note = notebook
         self.palette = palette
 
-    def convert(self, page_number, vectorize=False):
+    def convert(self, page_number, vectorize=False, enable_link=False):
         """Returns PDF data of the given page.
 
         Parameters
@@ -312,15 +312,16 @@ class PdfConverter:
                 (scale_x, scale_y) = (w / drawing.width, h / drawing.height)
                 drawing.scale(scale_x, scale_y)
                 renderPDF.draw(drawing, c, 0, 0)
-                page = self.note.get_page(n)
-                pageid = page.get_pageid()
-                if pageid is not None:
-                    c.bookmarkPage(pageid)
-                    def link_rectangle(cvs, tag, rect):
-                        (left, top, right, bottom) = rect
-                        cvs.linkAbsolute("Link", tag,
-                                         (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y))
-                    self._add_links(c, n, link_rectangle)
+                if enable_link:
+                    page = self.note.get_page(n)
+                    pageid = page.get_pageid()
+                    if pageid is not None:
+                        c.bookmarkPage(pageid)
+                        def link_rectangle(cvs, tag, rect):
+                            (left, top, right, bottom) = rect
+                            cvs.linkAbsolute("Link", tag,
+                                             (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y))
+                        self._add_links(c, n, link_rectangle)
                 c.showPage()
             c.save()
         else:
@@ -336,7 +337,9 @@ class PdfConverter:
             else:
                 img = converter.convert(page_number)
                 img.save(buf, format='PDF')
-            # TODO: handle internal and externel links
+            if enable_link:
+                # TODO: handle internal and externel links
+                pass
         return buf.getvalue()
 
     def _add_links(self, cvs, page_number, link_func):
@@ -346,11 +349,15 @@ class PdfConverter:
                 continue
             if link.get_inout() == 1:
                 continue             # ignore income link
-            if link.get_type() == 0: # internal out link
-                rect = link.get_rect()
-                tag = link.get_pageid()
-                link_func(cvs, tag, rect)
-            elif link.get_type() == 1: # externel out link
+            if link.get_type() == 0: # page link
+                link_fileid = link.get_fileid()
+                this_fileid = self.note.get_fileid()
+                is_internal_link = link_fileid == this_fileid
+                if is_internal_link:
+                    rect = link.get_rect()
+                    tag = link.get_pageid()
+                    link_func(cvs, tag, rect)
+            elif link.get_type() == 4: # web link
                 # TODO: handle external link
                 # c.linkURL(...)
                 pass
