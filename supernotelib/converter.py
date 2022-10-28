@@ -317,10 +317,14 @@ class PdfConverter:
                     pageid = page.get_pageid()
                     if pageid is not None:
                         c.bookmarkPage(pageid)
-                        def link_rectangle(cvs, tag, rect):
+                        def link_rectangle(cvs, tag, rect, link_type):
                             (left, top, right, bottom) = rect
-                            cvs.linkAbsolute("Link", tag,
-                                             (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y))
+                            scaled_rect = (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y)
+                            if link_type == fileformat.Link.TYPE_PAGE_LINK:
+                                cvs.linkAbsolute("Link", tag, scaled_rect)
+                            elif link_type == fileformat.Link.TYPE_WEB_LINK:
+                                url = tag
+                                cvs.linkURL(url, scaled_rect)
                         self._add_links(c, n, link_rectangle)
                 c.showPage()
             c.save()
@@ -338,7 +342,7 @@ class PdfConverter:
                 img = converter.convert(page_number)
                 img.save(buf, format='PDF')
             if enable_link:
-                # TODO: handle internal and externel links
+                # TODO: handle page links and web links
                 pass
         return buf.getvalue()
 
@@ -347,18 +351,21 @@ class PdfConverter:
         for link in links:
             if link.get_page_number() != page_number:
                 continue
-            if link.get_inout() == 1:
-                continue             # ignore income link
-            if link.get_type() == 0: # page link
+            if link.get_inout() == fileformat.Link.DIRECTION_IN:
+                # ignore income link
+                continue
+            link_type = link.get_type()
+            if link_type == fileformat.Link.TYPE_PAGE_LINK:
                 link_fileid = link.get_fileid()
                 this_fileid = self.note.get_fileid()
                 is_internal_link = link_fileid == this_fileid
                 if is_internal_link:
                     rect = link.get_rect()
                     tag = link.get_pageid()
-                    link_func(cvs, tag, rect)
-            elif link.get_type() == 4: # web link
-                # TODO: handle external link
-                # c.linkURL(...)
-                pass
+                    link_func(cvs, tag, rect, link_type)
+            elif link_type == fileformat.Link.TYPE_WEB_LINK:
+                encoded_url = link.get_filepath()
+                url = base64.b64decode(encoded_url).decode()
+                rect = link.get_rect()
+                link_func(cvs, url, rect, link_type)
 

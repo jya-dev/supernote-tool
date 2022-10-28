@@ -228,19 +228,17 @@ class Title:
         return self.position
 
 class Link:
+    TYPE_PAGE_LINK = 0
+    TYPE_FILE_LINK = 1
+    TYPE_WEB_LINK = 4
+
+    DIRECTION_OUT = 0
+    DIRECTION_IN = 1
+
     def __init__(self, link_info):
         self.metadata = link_info
         self.content = None
         self.page_number = 0
-        self.type = int(self.metadata['LINKTYPE']) # 0: page link, 1: file link, 4: web link
-        self.inout = int(self.metadata['LINKINOUT']) # 0: OUT, 1: IN
-        self.position = int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
-        (left, top, width, height) = self.metadata['LINKRECT'].split(',')
-        self.rect = (int(left), int(top), int(left) + int(width), int(top) + int(height))
-        self.timestamp = self.metadata['LINKTIMESTAMP']
-        self.filepath = self.metadata['LINKFILE'] # Base64-encoded file path string
-        self.fileid = self.metadata['LINKFILEID']
-        self.pageid = None if self.metadata['PAGEID'] == 'none' else self.metadata['PAGEID']
 
     def set_content(self, content):
         self.content = content
@@ -255,28 +253,29 @@ class Link:
         return self.page_number
 
     def get_type(self):
-        return self.type
+        return int(self.metadata['LINKTYPE'])
 
     def get_inout(self):
-        return self.inout
+        return int(self.metadata['LINKINOUT'])
 
     def get_position(self):
-        return self.position
+        return int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
 
     def get_rect(self):
-        return self.rect
+        (left, top, width, height) = self.metadata['LINKRECT'].split(',')
+        return (int(left), int(top), int(left) + int(width), int(top) + int(height))
 
     def get_timestamp(self):
-        return self.timestamp
+        return self.metadata['LINKTIMESTAMP']
 
     def get_filepath(self):
-        return self.filepath
+        return self.metadata['LINKFILE'] # Base64-encoded file path or URL
 
     def get_fileid(self):
-        return self.fileid
+        return None if self.metadata['LINKFILEID'] == 'none' else self.metadata['LINKFILEID']
 
     def get_pageid(self):
-        return self.pageid
+        return None if self.metadata['PAGEID'] == 'none' else self.metadata['PAGEID']
 
 class Page:
     def __init__(self, page_info):
