@@ -276,6 +276,7 @@ class PdfConverter:
     def __init__(self, notebook, palette=None):
         self.note = notebook
         self.palette = palette
+        self.pagesize = A4
 
     def convert(self, page_number, vectorize=False, enable_link=False):
         """Returns PDF data of the given page.
@@ -286,67 +287,53 @@ class PdfConverter:
             page number to convert
         vectorize : bool
             convert handwriting to vector
+        enable_link : bool
+            enable page links and web links
 
         Returns
         -------
         data : bytes
             bytes of PDF data
         """
-        buf = BytesIO()
         if vectorize:
             converter = SvgConverter(self.note, self.palette)
-            svglist = []
-            if page_number < 0:
-                # convert all pages
-                total = self.note.get_total_pages()
-                for i in range(total):
-                    svg = converter.convert(i)
-                    svglist.append(svg)
-            else:
-                svg = converter.convert(page_number)
-                svglist.append(svg)
-            (w, h) = A4
-            c = canvas.Canvas(buf, pagesize=portrait(A4))
-            for n, svg in enumerate(svglist):
-                drawing = svg2rlg(BytesIO(bytes(svg, 'ascii')))
-                (scale_x, scale_y) = (w / drawing.width, h / drawing.height)
-                drawing.scale(scale_x, scale_y)
-                renderPDF.draw(drawing, c, 0, 0)
-                if enable_link:
-                    page = self.note.get_page(n)
-                    pageid = page.get_pageid()
-                    if pageid is not None:
-                        c.bookmarkPage(pageid)
-                        def link_rectangle(cvs, tag, rect, link_type):
-                            (left, top, right, bottom) = rect
-                            scaled_rect = (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y)
-                            if link_type == fileformat.Link.TYPE_PAGE_LINK:
-                                cvs.linkAbsolute("Link", tag, scaled_rect)
-                            elif link_type == fileformat.Link.TYPE_WEB_LINK:
-                                url = tag
-                                cvs.linkURL(url, scaled_rect)
-                        self._add_links(c, n, link_rectangle)
-                c.showPage()
-            c.save()
+            renderer_class = PdfConverter.SvgPageRenderer
         else:
             converter = ImageConverter(self.note, self.palette)
-            if page_number < 0:
-                # convert all pages
-                imglist = []
-                total = self.note.get_total_pages()
-                for i in range(total):
-                    img = converter.convert(i)
-                    imglist.append(img.convert('RGB'))
-                imglist[0].save(buf, format='PDF', save_all=True, append_images=imglist[1:])
-            else:
-                img = converter.convert(page_number)
-                img.save(buf, format='PDF')
-            if enable_link:
-                # TODO: handle page links and web links
-                pass
-        return buf.getvalue()
+            renderer_class = PdfConverter.ImgPageRenderer
+        imglist = self._create_image_list(converter, page_number)
+        pdf_data = BytesIO()
+        self._create_pdf(pdf_data, imglist, renderer_class, enable_link)
+        return pdf_data.getvalue()
 
-    def _add_links(self, cvs, page_number, link_func):
+    def _create_image_list(self, converter, page_number):
+        imglist = []
+        if page_number < 0:
+            # convert all pages
+            total = self.note.get_total_pages()
+            for i in range(total):
+                img = converter.convert(i)
+                imglist.append(img)
+        else:
+            img = converter.convert(page_number)
+            imglist.append(img)
+        return imglist
+
+    def _create_pdf(self, buf, imglist, renderer_class, enable_link):
+        c = canvas.Canvas(buf, pagesize=portrait(self.pagesize))
+        for n, img in enumerate(imglist):
+            renderer = renderer_class(img, self.pagesize)
+            renderer.draw(c)
+            if enable_link:
+                page = self.note.get_page(n)
+                pageid = page.get_pageid()
+                if pageid is not None:
+                    c.bookmarkPage(pageid)
+                    self._add_links(c, n, renderer.get_scale())
+            c.showPage()
+        c.save()
+
+    def _add_links(self, cvs, page_number, scale):
         links = self.note.get_links()
         for link in links:
             if link.get_page_number() != page_number:
@@ -355,17 +342,48 @@ class PdfConverter:
                 # ignore income link
                 continue
             link_type = link.get_type()
-            if link_type == fileformat.Link.TYPE_PAGE_LINK:
-                link_fileid = link.get_fileid()
-                this_fileid = self.note.get_fileid()
-                is_internal_link = link_fileid == this_fileid
-                if is_internal_link:
-                    rect = link.get_rect()
-                    tag = link.get_pageid()
-                    link_func(cvs, tag, rect, link_type)
+            is_internal_link = link.get_fileid() == self.note.get_fileid()
+            if link_type == fileformat.Link.TYPE_PAGE_LINK and is_internal_link:
+                tag = link.get_pageid()
+                scaled_rect = self._calc_link_rect(link.get_rect(), scale)
+                cvs.linkAbsolute("Link", tag, scaled_rect)
             elif link_type == fileformat.Link.TYPE_WEB_LINK:
                 encoded_url = link.get_filepath()
                 url = base64.b64decode(encoded_url).decode()
-                rect = link.get_rect()
-                link_func(cvs, url, rect, link_type)
+                scaled_rect = self._calc_link_rect(link.get_rect(), scale)
+                cvs.linkURL(url, scaled_rect)
+
+    def _calc_link_rect(self, rect, scale):
+        (left, top, right, bottom) = rect
+        (scale_x, scale_y) = scale
+        (w, h) = self.pagesize
+        return (left * scale_x, h - top * scale_y, right * scale_x, h - bottom * scale_y)
+
+    class SvgPageRenderer:
+        def __init__(self, svg, pagesize):
+            self.svg = svg
+            self.pagesize = pagesize
+            self.drawing = svg2rlg(BytesIO(bytes(svg, 'ascii')))
+            (w, h) = pagesize
+            (self.scale_x, self.scale_y) = (w / self.drawing.width, h / self.drawing.height)
+            self.drawing.scale(self.scale_x, self.scale_y)
+
+        def get_scale(self):
+            return (self.scale_x, self.scale_y)
+
+        def draw(self, cvs):
+            renderPDF.draw(self.drawing, cvs, 0, 0)
+
+    class ImgPageRenderer:
+        def __init__(self, img, pagesize):
+            self.img = img
+            self.pagesize = pagesize
+
+        def get_scale(self):
+            (w, h) = self.pagesize
+            return (w / self.img.width, h / self.img.height)
+
+        def draw(self, cvs):
+            (w, h) = self.pagesize
+            cvs.drawInlineImage(self.img, 0, 0, width=w, height=h)
 
