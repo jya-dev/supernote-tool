@@ -74,7 +74,7 @@ def subcommand_convert(args):
             save(svg, args.output)
     elif args.type == 'pdf':
         vectorize = args.pdf_type == 'vector'
-        use_link = args.pdf_link
+        use_link = not args.no_link
         converter = sn.converter.PdfConverter(notebook, palette=palette)
         def save(data, file_name):
             if data is not None:
@@ -143,7 +143,7 @@ def main():
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
     parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf'], default='png', help='select conversion file type')
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
-    parser_convert.add_argument('--pdf-link', action='store_true', default=False, help='enable link in PDF')
+    parser_convert.add_argument('--no-link', action='store_true', default=False, help='disable links in PDF')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
 
