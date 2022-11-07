@@ -97,20 +97,14 @@ def load(stream, metadata=None, policy='strict'):
         content = _get_content_at_address(stream, address)
         keyword.set_content(content)
     # store title data to notebook object
-    title_keys = filter(lambda k : k.startswith('TITLE_'), note.get_metadata().footer.keys())
-    page_numbers = []
-    for k in title_keys:
-        page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
+    page_numbers = _get_page_number_from_footer_property(note.get_metadata().footer, 'TITLE_')
     for i, title in enumerate(note.get_titles()):
         address = _get_title_address(title)
         content = _get_content_at_address(stream, address)
         title.set_content(content)
         title.set_page_number(page_numbers[i])
     # store link data to notebook object
-    link_keys = filter(lambda k : k.startswith('LINK'), note.get_metadata().footer.keys())
-    page_numbers = []
-    for k in link_keys:
-        page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'LINKO_01234567'
+    page_numbers = _get_page_number_from_footer_property(note.get_metadata().footer, 'LINK')
     for i, link in enumerate(note.get_links()):
         address = _get_link_address(link)
         content = _get_content_at_address(stream, address)
@@ -241,6 +235,17 @@ def _get_totalpath_address(metadata, page_number):
     else:
         address = 0
     return address
+
+def _get_page_number_from_footer_property(footer, prefix):
+    keys = filter(lambda k : k.startswith(prefix), footer.keys())
+    page_numbers = []
+    for k in keys:
+        if type(footer[k]) == list:
+            for _ in range(len(footer[k])):
+                page_numbers.append(int(k[6:10]) - 1)
+        else:
+            page_numbers.append(int(k[6:10]) - 1) # e.g. get '0123' from 'TITLE_01234567'
+    return page_numbers
 
 
 class SupernoteParser:
