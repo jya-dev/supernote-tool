@@ -125,6 +125,16 @@ def load(stream, metadata=None, policy='strict'):
         if totalpath_address > 0:
             content = _get_content_at_address(stream, totalpath_address)
             note.get_page(p).set_totalpath(content)
+        # store recogn file data to notebook object
+        recogn_file_address = _get_recogn_file_address(metadata, p)
+        if recogn_file_address > 0:
+            content = _get_content_at_address(stream, recogn_file_address)
+            note.get_page(p).set_recogn_file(content)
+        # store recogn text data to notebook object
+        recogn_text_address = _get_recogn_text_address(metadata, p)
+        if recogn_text_address > 0:
+            content = _get_content_at_address(stream, recogn_text_address)
+            note.get_page(p).set_recogn_text(content)
     return note
 
 def load_notebook(file_name, metadata=None, policy='strict'):
@@ -232,6 +242,34 @@ def _get_totalpath_address(metadata, page_number):
     """
     if 'TOTALPATH' in metadata.pages[page_number]:
         address = int(metadata.pages[page_number]['TOTALPATH'])
+    else:
+        address = 0
+    return address
+
+def _get_recogn_file_address(metadata, page_number):
+    """Returns recogn file address of the given page number.
+
+    Returns
+    -------
+    int
+        recogn file address
+    """
+    if 'RECOGNFILE' in metadata.pages[page_number]:
+        address = int(metadata.pages[page_number]['RECOGNFILE'])
+    else:
+        address = 0
+    return address
+
+def _get_recogn_text_address(metadata, page_number):
+    """Returns recogn text address of the given page number.
+
+    Returns
+    -------
+    int
+        recogn text address
+    """
+    if 'RECOGNTEXT' in metadata.pages[page_number]:
+        address = int(metadata.pages[page_number]['RECOGNTEXT'])
     else:
         address = 0
     return address

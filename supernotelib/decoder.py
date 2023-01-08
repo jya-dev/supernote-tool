@@ -14,6 +14,8 @@
 
 """Decoder classes."""
 
+import base64
+import json
 import numpy as np
 import png
 import queue
@@ -237,3 +239,31 @@ class PngDecoder(BaseDecoder):
             ch = ch + 1
         bit_per_pixel = depth * ch
         return bytes(rows), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+
+
+class TextDecoder(BaseDecoder):
+    """Decoder for text."""
+
+    def decode(self, data, palette=None, all_blank=False):
+        """Extract text from a realtime recognition data.
+
+        Parameters
+        ----------
+        data : bytes
+            recognition text data (base64 encoded)
+
+        Returns
+        -------
+        list of string
+            list of recognized text
+        """
+        if data is None:
+            return None
+        recogn_json = base64.b64decode(data).decode('utf-8')
+        recogn = json.loads(recogn_json)
+        elements = recogn.get('elements')
+        text = []
+        for e in elements:
+            label = e.get('label')
+            text.append(label)
+        return text

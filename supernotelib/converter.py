@@ -387,3 +387,29 @@ class PdfConverter:
             (w, h) = self.pagesize
             cvs.drawInlineImage(self.img, 0, 0, width=w, height=h)
 
+
+class TextConverter:
+    def __init__(self, notebook, palette=None):
+        self.note = notebook
+        self.palette = palette
+
+    def convert(self, page_number):
+        """Returns text of the given page if available.
+
+        Parameters
+        ----------
+        page_number : int
+            page number to convert
+
+        Returns
+        -------
+        string
+            a recognized text if available, otherwise None
+        """
+        if not self.note.is_realtime_recognition():
+            return None
+        page = self.note.get_page(page_number)
+        binary = page.get_recogn_text()
+        decoder = Decoder.TextDecoder()
+        text_list = decoder.decode(binary)
+        return ' '.join(text_list)

@@ -33,6 +33,16 @@ def convert_all(converter, total, file_name, save_func):
         img = converter.convert(i)
         save_func(img, numbered_filename)
 
+def convert_and_concat_all(converter, total, file_name, save_func):
+    data = []
+    for i in range(total):
+        data.append(converter.convert(i))
+    data = list(filter(lambda x : x is not None, data))
+    if len(data) > 0:
+        save_func('\n'.join(data), file_name)
+    else:
+        print('no data')
+
 def subcommand_analyze(args):
     # show all metadata as JSON
     with open(args.input, 'rb') as f:
@@ -88,6 +98,19 @@ def subcommand_convert(args):
         else:
             data = converter.convert(args.number, vectorize, enable_link=use_link)
             save(data, args.output)
+    elif args.type == 'txt':
+        converter = sn.converter.TextConverter(notebook, palette=palette)
+        def save(data, file_name):
+            if data is not None:
+                with open(file_name, 'w') as f:
+                    f.write(data)
+            else:
+                print('no data')
+        if args.all:
+            convert_and_concat_all(converter, total, args.output, save)
+        else:
+            data = converter.convert(args.number)
+            save(data, args.output)
 
 def subcommand_merge(args):
     num_input = len(args.input)
@@ -141,7 +164,7 @@ def main():
     parser_convert.add_argument('-n', '--number', type=int, default=0, help='page number to be converted')
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
-    parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf'], default='png', help='select conversion file type')
+    parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf', 'txt'], default='png', help='select conversion file type')
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--no-link', action='store_true', default=False, help='disable links in PDF')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
