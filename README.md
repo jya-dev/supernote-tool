@@ -10,12 +10,7 @@ This tool is under development and may change.
 ## Installation
 
 ```
-$ git clone https://github.com/jya-dev/supernote-tool
-$ cd supernote-tool
-$ python -m venv venv
-$ source venv/bin/activate
-$ pip install -U setuptools    # required if version of setuptools < 46.4.0
-$ pip install .
+$ pip install supernotelib
 ```
 
 
@@ -67,6 +62,12 @@ Note that converting to a vector takes time.
 $ supernote-tool convert -t pdf --pdf-type vector -a your.note output.pdf
 ```
 
+To extract text from a real-time recognition note introduced from Chauvet2.7.21:
+
+```
+$ supernote-tool convert -t txt -a your.note output.txt
+```
+
 For developers, dump note metadata as JSON format:
 
 ```
@@ -77,8 +78,8 @@ $ supernote-tool analyze your.note
 ## Supporting files
 
 * `*.note` file created on Supernote A5 (Firmware SN100.B000.432_release)
-* `*.note` file created on Supernote A6 X (Firmware Chauvet 2.6.19)
-* `*.note` file created on Supernote A5 X (Firmware Chauvet 2.6.19)
+* `*.note` file created on Supernote A6 X (Firmware Chauvet 2.7.21)
+* `*.note` file created on Supernote A5 X (Firmware Chauvet 2.7.21)
 
 
 ## License
