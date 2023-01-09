@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "supernotelib"
+description = "An unofficial converter library for Ratta Supernote"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.6"
+keywords = [
+  "supernote",
+]
+authors = [
+  { name = "jya", email = "jya@wizmy.net" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "colour>=0.1.5",
+  "fusepy>=3.0.1",
+  "numpy>=1.19.0",
+  "Pillow>=7.2.0",
+  "potracer>=0.0.1",
+  "pypng>=0.0.20",
+  "reportlab>=3.6.1",
+  "svglib>=1.1.0",
+  "svgwrite>=1.4",
+]
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://github.com/jya-dev/supernote-tool"
+
+[project.scripts]
+supernote-tool = "supernotelib.cmds.supernote_tool:main"
+supernote-fuse = "supernotelib.cmds.supernote_fuse:main"
+
+[tool.hatch.version]
+path = "supernotelib/__init__.py"
