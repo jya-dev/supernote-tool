@@ -262,8 +262,4 @@ class TextDecoder(BaseDecoder):
         recogn_json = base64.b64decode(data).decode('utf-8')
         recogn = json.loads(recogn_json)
         elements = recogn.get('elements')
-        text = []
-        for e in elements:
-            label = e.get('label')
-            text.append(label)
-        return text
+        return list(map(lambda e : e.get('label'), filter(lambda e : e.get('type') == 'Text', elements)))

@@ -281,6 +281,10 @@ class Link:
         return None if self.metadata['PAGEID'] == 'none' else self.metadata['PAGEID']
 
 class Page:
+    RECOGNSTATUS_NONE = 0
+    RECOGNSTATUS_DONE = 1
+    RECOGNSTATUS_RUNNING = 2
+
     def __init__(self, page_info):
         self.metadata = page_info
         self.content = None
@@ -355,6 +359,9 @@ class Page:
 
     def get_pageid(self):
         return self.metadata.get('PAGEID')
+
+    def get_recogn_status(self):
+        return int(self.metadata.get('RECOGNSTATUS'))
 
     def set_recogn_file(self, recogn_file):
         self.recogn_file = recogn_file

@@ -409,7 +409,11 @@ class TextConverter:
         if not self.note.is_realtime_recognition():
             return None
         page = self.note.get_page(page_number)
+        if page.get_recogn_status() != fileformat.Page.RECOGNSTATUS_DONE:
+            return None
         binary = page.get_recogn_text()
         decoder = Decoder.TextDecoder()
         text_list = decoder.decode(binary)
+        if text_list is None:
+            return None
         return ' '.join(text_list)
