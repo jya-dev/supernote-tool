@@ -228,9 +228,10 @@ class PngDecoder(BaseDecoder):
             bit per pixel
         """
         r = png.Reader(bytes=data)
-        (width, height, rows, info) = r.read_flat()
+        (width, height, rows, info) = r.asRGBA()
         if width != fileformat.PAGE_WIDTH or height != fileformat.PAGE_HEIGHT:
             raise exceptions.DecoderException(f'invalid size = ({width}, {height}), expected = ({fileformat.PAGE_WIDTH}, {fileformat.PAGE_HEIGHT})')
+        values = [x for row in rows for x in row] # flatten rows
         depth = info['bitdepth']
         greyscale = info['greyscale']
         alpha = info['alpha']
@@ -238,7 +239,7 @@ class PngDecoder(BaseDecoder):
         if alpha:
             ch = ch + 1
         bit_per_pixel = depth * ch
-        return bytes(rows), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+        return bytes(values), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
 
 
 class TextDecoder(BaseDecoder):
