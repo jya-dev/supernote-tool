@@ -22,7 +22,7 @@ import sys
 from colour import Color
 
 import supernotelib as sn
-
+from supernotelib.converter import ImageConverter, SvgConverter, PdfConverter, TextConverter
 
 def convert_all(converter, total, file_name, save_func):
     basename, extension = os.path.splitext(file_name)
@@ -43,15 +43,66 @@ def convert_and_concat_all(converter, total, file_name, save_func):
     else:
         print('no data')
 
-def subcommand_analyze(args):
-    # show all metadata as JSON
-    with open(args.input, 'rb') as f:
-        metadata = sn.parse_metadata(f, policy=args.policy)
-    print(metadata.to_json(indent=2))
+def convert_to_png(args, notebook, palette):
+    converter = ImageConverter(notebook, palette=palette)
+    def save(img, file_name):
+        img.save(file_name, format='PNG')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_all(converter, total, args.output, save)
+    else:
+        img = converter.convert(args.number)
+        save(img, args.output)
+
+def convert_to_svg(args, notebook, palette):
+    converter = SvgConverter(notebook, palette=palette)
+    def save(svg, file_name):
+        if svg is not None:
+            with open(file_name, 'w') as f:
+                f.write(svg)
+        else:
+            print('no path data')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_all(converter, total, args.output, save)
+    else:
+        svg = converter.convert(args.number)
+        save(svg, args.output)
+
+def convert_to_pdf(args, notebook, palette):
+    vectorize = args.pdf_type == 'vector'
+    use_link = not args.no_link
+    converter = PdfConverter(notebook, palette=palette)
+    def save(data, file_name):
+        if data is not None:
+            with open(file_name, 'wb') as f:
+                f.write(data)
+        else:
+            print('no data')
+    if args.all:
+        data = converter.convert(-1, vectorize, enable_link=use_link) # minus value means converting all pages
+        save(data, args.output)
+    else:
+        data = converter.convert(args.number, vectorize, enable_link=use_link)
+        save(data, args.output)
+
+def convert_to_txt(args, notebook, palette):
+    converter = TextConverter(notebook, palette=palette)
+    def save(data, file_name):
+        if data is not None:
+            with open(file_name, 'w') as f:
+                f.write(data)
+        else:
+            print('no data')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_and_concat_all(converter, total, args.output, save)
+    else:
+        data = converter.convert(args.number)
+        save(data, args.output)
 
 def subcommand_convert(args):
     notebook = sn.load_notebook(args.input, policy=args.policy)
-    total = notebook.get_total_pages()
     palette = None
     if args.color:
         try:
@@ -60,57 +111,16 @@ def subcommand_convert(args):
             print(e, file=sys.stderr)
             sys.exit(1)
         palette = sn.color.ColorPalette(sn.color.MODE_RGB, colors)
-    if args.type == 'png':
-        converter = sn.converter.ImageConverter(notebook, palette=palette)
-        def save(img, file_name):
-            img.save(file_name, format='PNG')
-        if args.all:
-            convert_all(converter, total, args.output, save)
-        else:
-            img = converter.convert(args.number)
-            save(img, args.output)
-    elif args.type == 'svg':
-        converter = sn.converter.SvgConverter(notebook, palette=palette)
-        def save(svg, file_name):
-            if svg is not None:
-                with open(file_name, 'w') as f:
-                    f.write(svg)
-            else:
-                print('no path data')
-        if args.all:
-            convert_all(converter, total, args.output, save)
-        else:
-            svg = converter.convert(args.number)
-            save(svg, args.output)
-    elif args.type == 'pdf':
-        vectorize = args.pdf_type == 'vector'
-        use_link = not args.no_link
-        converter = sn.converter.PdfConverter(notebook, palette=palette)
-        def save(data, file_name):
-            if data is not None:
-                with open(file_name, 'wb') as f:
-                    f.write(data)
-            else:
-                print('no data')
-        if args.all:
-            data = converter.convert(-1, vectorize, enable_link=use_link) # minus value means converting all pages
-            save(data, args.output)
-        else:
-            data = converter.convert(args.number, vectorize, enable_link=use_link)
-            save(data, args.output)
-    elif args.type == 'txt':
-        converter = sn.converter.TextConverter(notebook, palette=palette)
-        def save(data, file_name):
-            if data is not None:
-                with open(file_name, 'w', encoding='utf-8') as f:
-                    f.write(data)
-            else:
-                print('no data')
-        if args.all:
-            convert_and_concat_all(converter, total, args.output, save)
-        else:
-            data = converter.convert(args.number)
-            save(data, args.output)
+    if args.type == 'png': convert_to_png(args, notebook, palette)
+    elif args.type == 'svg': convert_to_svg(args, notebook, palette)
+    elif args.type == 'pdf': convert_to_pdf(args, notebook, palette)
+    elif args.type == 'txt': convert_to_txt(args, notebook, palette)
+
+def subcommand_analyze(args):
+    # show all metadata as JSON
+    with open(args.input, 'rb') as f:
+        metadata = sn.parse_metadata(f, policy=args.policy)
+    print(metadata.to_json(indent=2))
 
 def subcommand_merge(args):
     num_input = len(args.input)
