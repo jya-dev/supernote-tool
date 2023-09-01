@@ -78,8 +78,8 @@ $ supernote-tool analyze your.note
 ## Supporting files
 
 * `*.note` file created on Supernote A5 (Firmware SN100.B000.432_release)
-* `*.note` file created on Supernote A6 X (Firmware Chauvet 2.7.21)
-* `*.note` file created on Supernote A5 X (Firmware Chauvet 2.7.21)
+* `*.note` file created on Supernote A6 X (Firmware Chauvet 2.10.25)
+* `*.note` file created on Supernote A5 X (Firmware Chauvet 2.10.25)
 
 
 ## License
