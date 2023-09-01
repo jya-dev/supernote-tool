@@ -102,7 +102,7 @@ def subcommand_convert(args):
         converter = sn.converter.TextConverter(notebook, palette=palette)
         def save(data, file_name):
             if data is not None:
-                with open(file_name, 'w') as f:
+                with open(file_name, 'w', encoding='utf-8') as f:
                     f.write(data)
             else:
                 print('no data')
