@@ -64,18 +64,19 @@ class ImageConverter:
         """
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
-            return self._convert_layered_page(page, self.palette, visibility_overlay)
+            highres_grayscale = self.note.supports_highres_grayscale()
+            return self._convert_layered_page(page, self.palette, visibility_overlay, highres_grayscale)
         else:
             return self._convert_nonlayered_page(page, self.palette, visibility_overlay)
 
-    def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None):
+    def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
         binary = page.get_content()
         if binary is None:
             return Image.new('L', (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.TRANSPARENT)
         decoder = self.find_decoder(page)
         return self._create_image_from_decoder(decoder, binary, palette=palette)
 
-    def _convert_layered_page(self, page, palette=None, visibility_overlay=None):
+    def _convert_layered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
         page = utils.WorkaroundPageWrapper.from_page(page)
         imgs = {}
         layers = page.get_layers()
@@ -86,7 +87,7 @@ class ImageConverter:
                 imgs[layer_name] = None
                 continue
             binary_size = len(binary)
-            decoder = self.find_decoder(layer)
+            decoder = self.find_decoder(layer, highres_grayscale)
             page_style = page.get_style()
             all_blank = (layer_name == 'BGLAYER' and page_style is not None and page_style == 'style_white' and \
                          binary_size == self.SPECIAL_WHITE_STYLE_BLOCK_SIZE)
@@ -165,7 +166,7 @@ class ImageConverter:
             visibility['MAINLAYER'] = True
         return visibility
 
-    def find_decoder(self, page):
+    def find_decoder(self, page, highres_grayscale=False):
         """Returns a proper decoder for the given page.
 
         Parameters
@@ -182,7 +183,10 @@ class ImageConverter:
         if protocol == 'SN_ASA_COMPRESS':
             return Decoder.FlateDecoder()
         elif protocol == 'RATTA_RLE':
-            return Decoder.RattaRleDecoder()
+            if highres_grayscale:
+                return Decoder.RattaRleX2Decoder()
+            else:
+                return Decoder.RattaRleDecoder()
         else:
             raise exceptions.UnknownDecodeProtocol(f'unknown decode protocol: {protocol}')
 

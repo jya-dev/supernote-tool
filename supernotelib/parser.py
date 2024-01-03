@@ -41,7 +41,7 @@ def parse_metadata(stream, policy='strict'):
         metadata object
     """
     try:
-        parser = SupernoteParser()
+        parser = SupernoteXParser()
         metadata = parser.parse_stream(stream, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
@@ -50,7 +50,7 @@ def parse_metadata(stream, policy='strict'):
         return metadata
 
     try:
-        parser = SupernoteXParser()
+        parser = SupernoteParser()
         metadata = parser.parse_stream(stream, policy)
     except exceptions.UnsupportedFileFormat:
         # ignore this exception and try next parser
@@ -527,7 +527,8 @@ class SupernoteXParser(SupernoteParser):
         'noteSN_FILE_VER_20210010', # Firmware version Chauvet 2.1.6
         'noteSN_FILE_VER_20220011', # Firmware version Chauvet 2.5.17
         'noteSN_FILE_VER_20220013', # Firmware version Chauvet 2.6.19
-        'noteSN_FILE_VER_20230014'  # Firmware version Chauvet 2.10.25
+        'noteSN_FILE_VER_20230014', # Firmware version Chauvet 2.10.25
+        'noteSN_FILE_VER_20230015'  # Firmware version Chauvet 3.14.27
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 

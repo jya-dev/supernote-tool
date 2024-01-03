@@ -24,6 +24,8 @@ DARK_GRAY = 0x9d
 GRAY = 0xc9
 WHITE = 0xfe
 TRANSPARENT = 0xff
+DARK_GRAY_COMPAT = 0x30
+GRAY_COMPAT = 0x50
 
 # preset RGB colors
 RGB_BLACK = 0x000000
@@ -31,6 +33,8 @@ RGB_DARK_GRAY = 0x9d9d9d
 RGB_GRAY = 0xc9c9c9
 RGB_WHITE = 0xfefefe
 RGB_TRANSPARENT = 0xffffff
+RGB_DARK_GRAY_COMPAT = 0x303030
+RGB_GRAY_COMPAT = 0x505050
 
 
 def get_rgb(value):
@@ -48,7 +52,10 @@ def web_string(value, mode=MODE_RGB):
 
 
 class ColorPalette:
-    def __init__(self, mode=MODE_GRAYSCALE, colors=(BLACK, DARK_GRAY, GRAY, WHITE)):
+    def __init__(self,
+                mode=MODE_GRAYSCALE,
+                colors=(BLACK, DARK_GRAY, GRAY, WHITE),
+                compat_colors=(DARK_GRAY_COMPAT, GRAY_COMPAT)):
         if mode not in [MODE_GRAYSCALE, MODE_RGB]:
             raise ValueError('mode must be MODE_GRAYSCALE or MODE_RGB')
         if len(colors) != 4:
@@ -62,7 +69,15 @@ class ColorPalette:
             self.transparent = TRANSPARENT
         else:
             self.transparent = RGB_TRANSPARENT
+        self.darkgray_compat = compat_colors[0]
+        self.gray_compat = compat_colors[1]
 
 
-DEFAULT_COLORPALETTE = ColorPalette(MODE_GRAYSCALE, (BLACK, DARK_GRAY, GRAY, WHITE))
-DEFAULT_RGB_COLORPALETTE = ColorPalette(MODE_RGB, (RGB_BLACK, RGB_DARK_GRAY, RGB_GRAY, RGB_WHITE))
+DEFAULT_COLORPALETTE = \
+    ColorPalette(MODE_GRAYSCALE,
+                 (BLACK, DARK_GRAY, GRAY, WHITE),
+                 (DARK_GRAY_COMPAT, GRAY_COMPAT))
+DEFAULT_RGB_COLORPALETTE = \
+    ColorPalette(MODE_RGB,
+                 (RGB_BLACK, RGB_DARK_GRAY, RGB_GRAY, RGB_WHITE),
+                 (RGB_DARK_GRAY_COMPAT, RGB_GRAY_COMPAT))

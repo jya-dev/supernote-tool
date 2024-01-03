@@ -179,6 +179,9 @@ class Notebook:
     def is_realtime_recognition(self):
         return self.metadata.header.get('FILE_RECOGN_TYPE') == '1'
 
+    def supports_highres_grayscale(self):
+        return int(self.signature[-8:]) >= 20230015
+
 class Cover:
     def __init__(self):
         self.content = None
