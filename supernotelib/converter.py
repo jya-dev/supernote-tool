@@ -25,7 +25,7 @@ from io import BytesIO
 from PIL import Image
 
 from svglib.svglib import svg2rlg
-from reportlab.lib.pagesizes import A4, portrait
+from reportlab.lib.pagesizes import A4, portrait, landscape
 from reportlab.graphics import renderPDF
 from reportlab.pdfgen import canvas
 
@@ -94,7 +94,8 @@ class ImageConverter:
             custom_bg = (layer_name == 'BGLAYER' and page_style is not None and page_style.startswith('user_'))
             if custom_bg:
                 decoder = Decoder.PngDecoder()
-            img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank)
+            horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
+            img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank, horizontal=horizontal)
             imgs[layer_name] = img
         return self._flatten_layers(page, imgs, visibility_overlay)
 
@@ -104,7 +105,11 @@ class ImageConverter:
             mask = fg.copy().convert('L')
             mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
             return Image.composite(fg, bg, mask)
-        flatten_img = Image.new('RGB', (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.RGB_TRANSPARENT)
+        horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
+        page_width, page_height = (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)
+        if horizontal:
+            page_height, page_width = (page_width, page_height)
+        flatten_img = Image.new('RGB', (page_width, page_height), color=color.RGB_TRANSPARENT)
         visibility = self._get_layer_visibility(page)
         layer_order = page.get_layer_order()
         for name in reversed(layer_order):
@@ -130,8 +135,8 @@ class ImageConverter:
         newImg.paste(img, mask=img)
         return newImg
 
-    def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False):
-        bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint)
+    def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False, horizontal=False):
+        bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint, horizontal=horizontal)
         if bpp == 32:
             img = Image.frombytes('RGBA', size, bitmap)
         elif bpp == 24:
@@ -208,6 +213,7 @@ class ImageConverter:
 
 class SvgConverter:
     def __init__(self, notebook, palette=None):
+        self.note = notebook
         self.palette = palette if palette is not None else color.DEFAULT_COLORPALETTE
         self.image_converter = ImageConverter(notebook, palette=color.DEFAULT_COLORPALETTE) # use default pallete
 
@@ -224,7 +230,12 @@ class SvgConverter:
         string
             an SVG string
         """
-        dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT))
+        page = self.note.get_page(page_number)
+        horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
+        page_width, page_height = (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)
+        if horizontal:
+            page_height, page_width = (page_width, page_height)
+        dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(page_width, page_height))
 
         vo_only_bg = ImageConverter.build_visibility_overlay(
             background=VisibilityOverlay.VISIBLE,
@@ -236,7 +247,7 @@ class SvgConverter:
         buffer = BytesIO()
         bg_img.save(buffer, format='png')
         bg_b64str = base64.b64encode(buffer.getvalue()).decode('ascii')
-        dwg.add(dwg.image('data:image/png;base64,' + bg_b64str, insert=(0, 0), size=(fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)))
+        dwg.add(dwg.image('data:image/png;base64,' + bg_b64str, insert=(0, 0), size=(page_width, page_height)))
 
         vo_except_bg = ImageConverter.build_visibility_overlay(background=VisibilityOverlay.INVISIBLE)
         img = self.image_converter.convert(page_number, visibility_overlay=vo_except_bg)
@@ -324,12 +335,15 @@ class PdfConverter:
         return imglist
 
     def _create_pdf(self, buf, imglist, renderer_class, enable_link):
-        c = canvas.Canvas(buf, pagesize=portrait(self.pagesize))
+        c = canvas.Canvas(buf, pagesize=self.pagesize)
         for n, img in enumerate(imglist):
-            renderer = renderer_class(img, self.pagesize)
+            page = self.note.get_page(n)
+            horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
+            pagesize = landscape(self.pagesize) if horizontal else portrait(self.pagesize)
+            c.setPageSize(pagesize)
+            renderer = renderer_class(img, pagesize)
             renderer.draw(c)
             if enable_link:
-                page = self.note.get_page(n)
                 pageid = page.get_pageid()
                 if pageid is not None:
                     c.bookmarkPage(pageid)

@@ -28,7 +28,7 @@ from . import fileformat
 
 class BaseDecoder:
     """Abstract decoder class."""
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         raise NotImplementedError('subclasses must implement decode method')
 
 
@@ -42,7 +42,7 @@ class FlateDecoder(BaseDecoder):
     INTERNAL_PAGE_HEIGHT = 1888
     INTERNAL_PAGE_WIDTH = 1404
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -101,7 +101,7 @@ class RattaRleDecoder(BaseDecoder):
     SPECIAL_LENGTH = 0x4000
     SPECIAL_LENGTH_FOR_BLANK = 0x400
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -128,7 +128,12 @@ class RattaRleDecoder(BaseDecoder):
 
         colormap = self._create_colormap(palette)
 
-        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH * int(bit_per_pixel / 8)
+        page_height = fileformat.PAGE_HEIGHT
+        page_width = fileformat.PAGE_WIDTH
+        if horizontal:
+            page_height, page_width = (page_width, page_height) # swap width and height
+
+        expected_length = page_height * page_width * int(bit_per_pixel / 8)
 
         uncompressed = bytearray()
         bin = iter(data)
@@ -180,7 +185,7 @@ class RattaRleDecoder(BaseDecoder):
         if len(uncompressed) != expected_length:
             raise exceptions.DecoderException(f'uncompressed bitmap length = {len(uncompressed)}, expected = {expected_length}')
 
-        return bytes(uncompressed), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+        return bytes(uncompressed), (page_width, page_height), bit_per_pixel
 
     def _create_colormap(self, palette):
         colormap = {
@@ -257,7 +262,7 @@ class RattaRleX2Decoder(RattaRleDecoder):
 class PngDecoder(BaseDecoder):
     """Decoder for PNG."""
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -292,7 +297,7 @@ class PngDecoder(BaseDecoder):
 class TextDecoder(BaseDecoder):
     """Decoder for text."""
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Extract text from a realtime recognition data.
 
         Parameters
