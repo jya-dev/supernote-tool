@@ -25,16 +25,7 @@ import supernotelib as sn
 from supernotelib.converter import ImageConverter, SvgConverter, PdfConverter, TextConverter
 from supernotelib.converter import VisibilityOverlay
 
-def convert_all(converter, total, file_name, save_func):
-    basename, extension = os.path.splitext(file_name)
-    max_digits = len(str(total))
-    for i in range(total):
-        # append page number between filename and extention
-        numbered_filename = basename + '_' + str(i).zfill(max_digits) + extension
-        img = converter.convert(i)
-        save_func(img, numbered_filename)
-
-def convert_png_all(converter, total, file_name, save_func, visibility_overlay):
+def convert_all(converter, total, file_name, save_func, visibility_overlay):
     basename, extension = os.path.splitext(file_name)
     max_digits = len(str(total))
     for i in range(total):
@@ -56,18 +47,20 @@ def convert_and_concat_all(converter, total, file_name, save_func):
 def convert_to_png(args, notebook, palette):
     converter = ImageConverter(notebook, palette=palette)
     bg_visibility = VisibilityOverlay.INVISIBLE if args.exclude_background else VisibilityOverlay.DEFAULT
-    vo = ImageConverter.build_visibility_overlay(background=bg_visibility)
+    vo = sn.converter.build_visibility_overlay(background=bg_visibility)
     def save(img, file_name):
         img.save(file_name, format='PNG')
     if args.all:
         total = notebook.get_total_pages()
-        convert_png_all(converter, total, args.output, save, vo)
+        convert_all(converter, total, args.output, save, vo)
     else:
         img = converter.convert(args.number, visibility_overlay=vo)
         save(img, args.output)
 
 def convert_to_svg(args, notebook, palette):
     converter = SvgConverter(notebook, palette=palette)
+    bg_visibility = VisibilityOverlay.INVISIBLE if args.exclude_background else VisibilityOverlay.DEFAULT
+    vo = sn.converter.build_visibility_overlay(background=bg_visibility)
     def save(svg, file_name):
         if svg is not None:
             with open(file_name, 'w') as f:
@@ -76,9 +69,9 @@ def convert_to_svg(args, notebook, palette):
             print('no path data')
     if args.all:
         total = notebook.get_total_pages()
-        convert_all(converter, total, args.output, save)
+        convert_all(converter, total, args.output, save, vo)
     else:
-        svg = converter.convert(args.number)
+        svg = converter.convert(args.number, visibility_overlay=vo)
         save(svg, args.output)
 
 def convert_to_pdf(args, notebook, palette):
