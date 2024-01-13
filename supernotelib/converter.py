@@ -42,6 +42,21 @@ class VisibilityOverlay(Enum):
     INVISIBLE = auto()
 
 
+def build_visibility_overlay(
+        background=VisibilityOverlay.DEFAULT,
+        main=VisibilityOverlay.DEFAULT,
+        layer1=VisibilityOverlay.DEFAULT,
+        layer2=VisibilityOverlay.DEFAULT,
+        layer3=VisibilityOverlay.DEFAULT):
+    return {
+        'BGLAYER': background,
+        'MAINLAYER': main,
+        'LAYER1': layer1,
+        'LAYER2': layer2,
+        'LAYER3': layer3,
+    }
+
+
 class ImageConverter:
     SPECIAL_WHITE_STYLE_BLOCK_SIZE = 0x140e
 
@@ -65,9 +80,12 @@ class ImageConverter:
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
             highres_grayscale = self.note.supports_highres_grayscale()
-            return self._convert_layered_page(page, self.palette, visibility_overlay, highres_grayscale)
+            converted_img = self._convert_layered_page(page, self.palette, visibility_overlay, highres_grayscale)
         else:
-            return self._convert_nonlayered_page(page, self.palette, visibility_overlay)
+            converted_img = self._convert_nonlayered_page(page, self.palette, visibility_overlay)
+        if visibility_overlay is not None and visibility_overlay.get('BGLAYER') == VisibilityOverlay.INVISIBLE:
+            converted_img = self._make_transparent(converted_img)
+        return converted_img
 
     def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
         binary = page.get_content()
@@ -137,6 +155,13 @@ class ImageConverter:
         newImg.paste(img, mask=img)
         return newImg
 
+    def _make_transparent(self, img):
+        transparent_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
+        mask = img.copy().convert('L')
+        mask = mask.point(lambda x: 1 if x == color.TRANSPARENT else 0, mode='1')
+        img = img.convert('RGBA')
+        return Image.composite(transparent_img, img, mask)
+
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False, horizontal=False):
         bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint, horizontal=horizontal)
         if bpp == 32:
@@ -197,21 +222,6 @@ class ImageConverter:
         else:
             raise exceptions.UnknownDecodeProtocol(f'unknown decode protocol: {protocol}')
 
-    @staticmethod
-    def build_visibility_overlay(
-            background=VisibilityOverlay.DEFAULT,
-            main=VisibilityOverlay.DEFAULT,
-            layer1=VisibilityOverlay.DEFAULT,
-            layer2=VisibilityOverlay.DEFAULT,
-            layer3=VisibilityOverlay.DEFAULT):
-        return {
-            'BGLAYER': background,
-            'MAINLAYER': main,
-            'LAYER1': layer1,
-            'LAYER2': layer2,
-            'LAYER3': layer3,
-        }
-
 
 class SvgConverter:
     def __init__(self, notebook, palette=None):
@@ -219,7 +229,7 @@ class SvgConverter:
         self.palette = palette if palette is not None else color.DEFAULT_COLORPALETTE
         self.image_converter = ImageConverter(notebook, palette=color.DEFAULT_COLORPALETTE) # use default pallete
 
-    def convert(self, page_number):
+    def convert(self, page_number, visibility_overlay=None):
         """Returns SVG string of the given page.
 
         Parameters
@@ -239,19 +249,21 @@ class SvgConverter:
             page_height, page_width = (page_width, page_height)
         dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(page_width, page_height))
 
-        vo_only_bg = ImageConverter.build_visibility_overlay(
-            background=VisibilityOverlay.VISIBLE,
-            main=VisibilityOverlay.INVISIBLE,
-            layer1=VisibilityOverlay.INVISIBLE,
-            layer2=VisibilityOverlay.INVISIBLE,
-            layer3=VisibilityOverlay.INVISIBLE)
-        bg_img = self.image_converter.convert(page_number, visibility_overlay=vo_only_bg)
-        buffer = BytesIO()
-        bg_img.save(buffer, format='png')
-        bg_b64str = base64.b64encode(buffer.getvalue()).decode('ascii')
-        dwg.add(dwg.image('data:image/png;base64,' + bg_b64str, insert=(0, 0), size=(page_width, page_height)))
+        bg_is_invisible = visibility_overlay is not None and visibility_overlay.get('BGLAYER') == VisibilityOverlay.INVISIBLE
+        if not bg_is_invisible:
+            vo_only_bg = build_visibility_overlay(
+                background=VisibilityOverlay.VISIBLE,
+                main=VisibilityOverlay.INVISIBLE,
+                layer1=VisibilityOverlay.INVISIBLE,
+                layer2=VisibilityOverlay.INVISIBLE,
+                layer3=VisibilityOverlay.INVISIBLE)
+            bg_img = self.image_converter.convert(page_number, visibility_overlay=vo_only_bg)
+            buffer = BytesIO()
+            bg_img.save(buffer, format='png')
+            bg_b64str = base64.b64encode(buffer.getvalue()).decode('ascii')
+            dwg.add(dwg.image('data:image/png;base64,' + bg_b64str, insert=(0, 0), size=(page_width, page_height)))
 
-        vo_except_bg = ImageConverter.build_visibility_overlay(background=VisibilityOverlay.INVISIBLE)
+        vo_except_bg = build_visibility_overlay(background=VisibilityOverlay.INVISIBLE)
         img = self.image_converter.convert(page_number, visibility_overlay=vo_except_bg)
 
         def generate_color_mask(img, c):
