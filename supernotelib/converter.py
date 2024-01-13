@@ -65,9 +65,12 @@ class ImageConverter:
         page = self.note.get_page(page_number)
         if page.is_layer_supported():
             highres_grayscale = self.note.supports_highres_grayscale()
-            return self._convert_layered_page(page, self.palette, visibility_overlay, highres_grayscale)
+            converted_img = self._convert_layered_page(page, self.palette, visibility_overlay, highres_grayscale)
         else:
-            return self._convert_nonlayered_page(page, self.palette, visibility_overlay)
+            converted_img = self._convert_nonlayered_page(page, self.palette, visibility_overlay)
+        if visibility_overlay is not None and visibility_overlay.get('BGLAYER') == VisibilityOverlay.INVISIBLE:
+            converted_img = self._make_transparent(converted_img)
+        return converted_img
 
     def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
         binary = page.get_content()
@@ -136,6 +139,13 @@ class ImageConverter:
         newImg = Image.new('RGBA', img.size, color.RGB_WHITE)
         newImg.paste(img, mask=img)
         return newImg
+
+    def _make_transparent(self, img):
+        transparent_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
+        mask = img.copy().convert('L')
+        mask = mask.point(lambda x: 1 if x == color.TRANSPARENT else 0, mode='1')
+        img = img.convert('RGBA')
+        return Image.composite(transparent_img, img, mask)
 
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False, horizontal=False):
         bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint, horizontal=horizontal)
