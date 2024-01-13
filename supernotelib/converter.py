@@ -77,6 +77,7 @@ class ImageConverter:
         return self._create_image_from_decoder(decoder, binary, palette=palette)
 
     def _convert_layered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
+        default_palette = color.DEFAULT_COLORPALETTE
         page = utils.WorkaroundPageWrapper.from_page(page)
         imgs = {}
         layers = page.get_layers()
@@ -95,7 +96,8 @@ class ImageConverter:
             if custom_bg:
                 decoder = Decoder.PngDecoder()
             horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
-            img = self._create_image_from_decoder(decoder, binary, palette=palette, blank_hint=all_blank, horizontal=horizontal)
+            plt = default_palette if layer_name == 'BGLAYER' else palette
+            img = self._create_image_from_decoder(decoder, binary, palette=plt, blank_hint=all_blank, horizontal=horizontal)
             imgs[layer_name] = img
         return self._flatten_layers(page, imgs, visibility_overlay)
 
