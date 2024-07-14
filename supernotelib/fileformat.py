@@ -193,6 +193,7 @@ class Keyword:
     def __init__(self, keyword_info):
         self.metadata = keyword_info
         self.content = None
+        self.keyword = str(self.metadata['KEYWORD'])
         self.page_number = int(self.metadata['KEYWORDPAGE']) - 1
         self.position = int(self.metadata['KEYWORDRECT'].split(',')[1]) # get top value from "left,top,width,height"
 
@@ -207,6 +208,12 @@ class Keyword:
 
     def get_position(self):
         return self.position
+    
+    def get_keyword(self):
+        return self.keyword
+    
+    def __str__(self):
+        return 'Keyword: %s, Page: %s' % (self.keyword,self.page_number)
 
 class Title:
     def __init__(self, title_info):

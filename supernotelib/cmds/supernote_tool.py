@@ -52,6 +52,9 @@ def subcommand_analyze(args):
 def subcommand_convert(args):
     notebook = sn.load_notebook(args.input, policy=args.policy)
     total = notebook.get_total_pages()
+    keywords = notebook.get_keywords()
+    for i in keywords:
+        print(i['keyword'])
     palette = None
     if args.color:
         try:
