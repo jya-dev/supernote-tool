@@ -22,15 +22,16 @@ import sys
 from colour import Color
 
 import supernotelib as sn
+from supernotelib.converter import ImageConverter, SvgConverter, PdfConverter, TextConverter
+from supernotelib.converter import VisibilityOverlay
 
-
-def convert_all(converter, total, file_name, save_func):
+def convert_all(converter, total, file_name, save_func, visibility_overlay):
     basename, extension = os.path.splitext(file_name)
     max_digits = len(str(total))
     for i in range(total):
         # append page number between filename and extention
         numbered_filename = basename + '_' + str(i).zfill(max_digits) + extension
-        img = converter.convert(i)
+        img = converter.convert(i, visibility_overlay)
         save_func(img, numbered_filename)
 
 def convert_and_concat_all(converter, total, file_name, save_func):
@@ -43,18 +44,77 @@ def convert_and_concat_all(converter, total, file_name, save_func):
     else:
         print('no data')
 
-def subcommand_analyze(args):
-    # show all metadata as JSON
-    with open(args.input, 'rb') as f:
-        metadata = sn.parse_metadata(f, policy=args.policy)
-    print(metadata.to_json(indent=2))
+def convert_to_png(args, notebook, palette):
+    converter = ImageConverter(notebook, palette=palette)
+    bg_visibility = VisibilityOverlay.INVISIBLE if args.exclude_background else VisibilityOverlay.DEFAULT
+    vo = sn.converter.build_visibility_overlay(background=bg_visibility)
+    def save(img, file_name):
+        img.save(file_name, format='PNG')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_all(converter, total, args.output, save, vo)
+    else:
+        img = converter.convert(args.number, visibility_overlay=vo)
+        save(img, args.output)
+
+def convert_to_svg(args, notebook, palette):
+    converter = SvgConverter(notebook, palette=palette)
+    bg_visibility = VisibilityOverlay.INVISIBLE if args.exclude_background else VisibilityOverlay.DEFAULT
+    vo = sn.converter.build_visibility_overlay(background=bg_visibility)
+    def save(svg, file_name):
+        if svg is not None:
+            with open(file_name, 'w') as f:
+                f.write(svg)
+        else:
+            print('no path data')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_all(converter, total, args.output, save, vo)
+    else:
+        svg = converter.convert(args.number, visibility_overlay=vo)
+        save(svg, args.output)
+
+def convert_to_pdf(args, notebook, palette):
+    vectorize = args.pdf_type == 'vector'
+    use_link = not args.no_link
+    converter = PdfConverter(notebook, palette=palette)
+    def save(data, file_name):
+        if data is not None:
+            with open(file_name, 'wb') as f:
+                f.write(data)
+        else:
+            print('no data')
+    if args.all:
+        data = converter.convert(-1, vectorize, enable_link=use_link) # minus value means converting all pages
+        save(data, args.output)
+    else:
+        data = converter.convert(args.number, vectorize, enable_link=use_link)
+        save(data, args.output)
+
+def convert_to_txt(args, notebook, palette):
+    converter = TextConverter(notebook, palette=palette)
+    def save(data, file_name):
+        if data is not None:
+            with open(file_name, 'w') as f:
+                f.write(data)
+        else:
+            print('no data')
+    if args.all:
+        total = notebook.get_total_pages()
+        convert_and_concat_all(converter, total, args.output, save)
+    else:
+        data = converter.convert(args.number)
+        save(data, args.output)
 
 def subcommand_convert(args):
     notebook = sn.load_notebook(args.input, policy=args.policy)
+<<<<<<< HEAD
     total = notebook.get_total_pages()
     keywords = notebook.get_keywords()
     for i in keywords:
         print(i['keyword'])
+=======
+>>>>>>> master
     palette = None
     if args.color:
         try:
@@ -63,57 +123,16 @@ def subcommand_convert(args):
             print(e, file=sys.stderr)
             sys.exit(1)
         palette = sn.color.ColorPalette(sn.color.MODE_RGB, colors)
-    if args.type == 'png':
-        converter = sn.converter.ImageConverter(notebook, palette=palette)
-        def save(img, file_name):
-            img.save(file_name, format='PNG')
-        if args.all:
-            convert_all(converter, total, args.output, save)
-        else:
-            img = converter.convert(args.number)
-            save(img, args.output)
-    elif args.type == 'svg':
-        converter = sn.converter.SvgConverter(notebook, palette=palette)
-        def save(svg, file_name):
-            if svg is not None:
-                with open(file_name, 'w') as f:
-                    f.write(svg)
-            else:
-                print('no path data')
-        if args.all:
-            convert_all(converter, total, args.output, save)
-        else:
-            svg = converter.convert(args.number)
-            save(svg, args.output)
-    elif args.type == 'pdf':
-        vectorize = args.pdf_type == 'vector'
-        use_link = not args.no_link
-        converter = sn.converter.PdfConverter(notebook, palette=palette)
-        def save(data, file_name):
-            if data is not None:
-                with open(file_name, 'wb') as f:
-                    f.write(data)
-            else:
-                print('no data')
-        if args.all:
-            data = converter.convert(-1, vectorize, enable_link=use_link) # minus value means converting all pages
-            save(data, args.output)
-        else:
-            data = converter.convert(args.number, vectorize, enable_link=use_link)
-            save(data, args.output)
-    elif args.type == 'txt':
-        converter = sn.converter.TextConverter(notebook, palette=palette)
-        def save(data, file_name):
-            if data is not None:
-                with open(file_name, 'w') as f:
-                    f.write(data)
-            else:
-                print('no data')
-        if args.all:
-            convert_and_concat_all(converter, total, args.output, save)
-        else:
-            data = converter.convert(args.number)
-            save(data, args.output)
+    if args.type == 'png': convert_to_png(args, notebook, palette)
+    elif args.type == 'svg': convert_to_svg(args, notebook, palette)
+    elif args.type == 'pdf': convert_to_pdf(args, notebook, palette)
+    elif args.type == 'txt': convert_to_txt(args, notebook, palette)
+
+def subcommand_analyze(args):
+    # show all metadata as JSON
+    with open(args.input, 'rb') as f:
+        metadata = sn.parse_metadata(f, policy=args.policy)
+    print(metadata.to_json(indent=2))
 
 def subcommand_merge(args):
     num_input = len(args.input)
@@ -168,6 +187,7 @@ def main():
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
     parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf', 'txt'], default='png', help='select conversion file type')
+    parser_convert.add_argument('--exclude-background', action='store_true', default=False, help='exclude background and make it transparent (PNG and SVG are supported)')
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--no-link', action='store_true', default=False, help='disable links in PDF')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')

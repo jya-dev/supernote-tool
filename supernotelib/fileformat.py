@@ -179,6 +179,9 @@ class Notebook:
     def is_realtime_recognition(self):
         return self.metadata.header.get('FILE_RECOGN_TYPE') == '1'
 
+    def supports_highres_grayscale(self):
+        return int(self.signature[-8:]) >= 20230015
+
 class Cover:
     def __init__(self):
         self.content = None
@@ -292,6 +295,9 @@ class Page:
     RECOGNSTATUS_DONE = 1
     RECOGNSTATUS_RUNNING = 2
 
+    ORIENTATION_VERTICAL = "1000"
+    ORIENTATION_HORIZONTAL = "1090"
+
     def __init__(self, page_info):
         self.metadata = page_info
         self.content = None
@@ -381,6 +387,9 @@ class Page:
 
     def get_recogn_text(self):
         return self.recogn_text
+
+    def get_orientation(self):
+        return self.metadata.get('ORIENTATION', self.ORIENTATION_VERTICAL)
 
 class Layer:
     def __init__(self, layer_info):

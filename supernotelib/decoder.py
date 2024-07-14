@@ -28,7 +28,7 @@ from . import fileformat
 
 class BaseDecoder:
     """Abstract decoder class."""
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         raise NotImplementedError('subclasses must implement decode method')
 
 
@@ -42,7 +42,7 @@ class FlateDecoder(BaseDecoder):
     INTERNAL_PAGE_HEIGHT = 1888
     INTERNAL_PAGE_WIDTH = 1404
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -101,7 +101,7 @@ class RattaRleDecoder(BaseDecoder):
     SPECIAL_LENGTH = 0x4000
     SPECIAL_LENGTH_FOR_BLANK = 0x400
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -126,18 +126,14 @@ class RattaRleDecoder(BaseDecoder):
         else:
             bit_per_pixel = 8
 
-        colormap = {
-            self.COLORCODE_BLACK: palette.black,
-            self.COLORCODE_BACKGROUND: palette.transparent,
-            self.COLORCODE_DARK_GRAY: palette.darkgray,
-            self.COLORCODE_GRAY: palette.gray,
-            self.COLORCODE_WHITE: palette.white,
-            self.COLORCODE_MARKER_BLACK: palette.black,
-            self.COLORCODE_MARKER_DARK_GRAY: palette.darkgray,
-            self.COLORCODE_MARKER_GRAY: palette.gray,
-        }
+        colormap = self._create_colormap(palette)
 
-        expected_length = fileformat.PAGE_HEIGHT * fileformat.PAGE_WIDTH * int(bit_per_pixel / 8)
+        page_height = fileformat.PAGE_HEIGHT
+        page_width = fileformat.PAGE_WIDTH
+        if horizontal:
+            page_height, page_width = (page_width, page_height) # swap width and height
+
+        expected_length = page_height * page_width * int(bit_per_pixel / 8)
 
         uncompressed = bytearray()
         bin = iter(data)
@@ -189,14 +185,28 @@ class RattaRleDecoder(BaseDecoder):
         if len(uncompressed) != expected_length:
             raise exceptions.DecoderException(f'uncompressed bitmap length = {len(uncompressed)}, expected = {expected_length}')
 
-        return bytes(uncompressed), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+        return bytes(uncompressed), (page_width, page_height), bit_per_pixel
+
+    def _create_colormap(self, palette):
+        colormap = {
+            self.COLORCODE_BLACK: palette.black,
+            self.COLORCODE_BACKGROUND: palette.transparent,
+            self.COLORCODE_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_GRAY: palette.gray,
+            self.COLORCODE_WHITE: palette.white,
+            self.COLORCODE_MARKER_BLACK: palette.black,
+            self.COLORCODE_MARKER_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_MARKER_GRAY: palette.gray,
+        }
+        return colormap
 
     def _create_color_bytearray(self, mode, colormap, color_code, length):
         if mode == color.MODE_RGB:
-            r, g, b = color.get_rgb(colormap[color_code])
+            c = colormap.get(color_code)
+            r, g, b = color.get_rgb(c)
             return bytearray((r, g, b,)) * length
         else:
-            c = colormap[color_code]
+            c = colormap.get(color_code)
             return bytearray((c,)) * length
 
     def _adjust_tail_length(self, tail_length, current_length, total_length):
@@ -207,10 +217,52 @@ class RattaRleDecoder(BaseDecoder):
                 return l
         return 0
 
+
+class RattaRleX2Decoder(RattaRleDecoder):
+    """Decoder for RATTA_RLE protocol of X2-series."""
+    # 4 color codes were changed from X-series
+    COLORCODE_DARK_GRAY = 0x9D
+    COLORCODE_GRAY = 0xC9
+    COLORCODE_MARKER_DARK_GRAY = 0x9E
+    COLORCODE_MARKER_GRAY = 0xCA
+    # color codes for X-series compatibility
+    COLORCODE_DARK_GRAY_COMPAT = 0x63
+    COLORCODE_GRAY_COMPAT = 0x64
+
+    def _create_colormap(self, palette):
+        colormap = {
+            self.COLORCODE_BLACK: palette.black,
+            self.COLORCODE_BACKGROUND: palette.transparent,
+            self.COLORCODE_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_GRAY: palette.gray,
+            self.COLORCODE_WHITE: palette.white,
+            self.COLORCODE_MARKER_BLACK: palette.black,
+            self.COLORCODE_MARKER_DARK_GRAY: palette.darkgray,
+            self.COLORCODE_MARKER_GRAY: palette.gray,
+            self.COLORCODE_DARK_GRAY_COMPAT: palette.darkgray_compat,
+            self.COLORCODE_GRAY_COMPAT: palette.gray_compat,
+        }
+        return colormap
+
+    def _create_color_bytearray(self, mode, colormap, color_code, length):
+        if mode == color.MODE_RGB:
+            c = colormap.get(color_code)
+            if c is not None:
+                r, g, b = color.get_rgb(c)
+            else: # if the color_code is not included in colormap, use the value as color directly
+                r, g, b = (color_code, color_code, color_code)
+            return bytearray((r, g, b,)) * length
+        else:
+            c = colormap.get(color_code)
+            if c is None:
+                c = color_code
+            return bytearray((c,)) * length
+
+
 class PngDecoder(BaseDecoder):
     """Decoder for PNG."""
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
@@ -245,7 +297,7 @@ class PngDecoder(BaseDecoder):
 class TextDecoder(BaseDecoder):
     """Decoder for text."""
 
-    def decode(self, data, palette=None, all_blank=False):
+    def decode(self, data, palette=None, all_blank=False, horizontal=False):
         """Extract text from a realtime recognition data.
 
         Parameters
