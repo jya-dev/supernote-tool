@@ -371,7 +371,10 @@ class PdfConverter:
                     try:
                         print('Added Keyword: '+i.get_keyword()+' Keyword Page: '+str(i.get_page_number()))
                         c.bookmarkPage(pageid)
-                        c.addOutlineEntry(i.get_keyword(),pageid,0,0)
+                        scaled_rect = self._calc_link_rect(i.get_rect(), renderer.get_scale())
+                        #c.linkAbsolute(i.get_keyword(), pageid, scaled_rect)
+                        #c.addOutlineEntry(i.get_keyword(),pageid,0,0)
+                        c.textAnnotation(i.get_keyword(),scaled_rect)
                     except:
                         continue
             if enable_link:
@@ -380,7 +383,10 @@ class PdfConverter:
                     c.bookmarkPage(pageid)
                     self._add_links(c, n, renderer.get_scale())
             c.showPage()
-            c.showOutline()
+            #c.showOutline()
+        c.setTitle('Notes')
+        c.setSubject('Notes')
+        c.setAuthor('Author')
         c.save()
 
     def _add_links(self, cvs, page_number, scale):

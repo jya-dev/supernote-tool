@@ -213,6 +213,10 @@ class Keyword:
     
     def get_keyword(self):
         return None if self.metadata['KEYWORD'] is None else str(self.metadata['KEYWORD'])
+    
+    def get_rect(self):
+        (left, top, width, height) = self.metadata['KEYWORDRECT'].split(',')
+        return (int(left), int(top), int(left) + int(width), int(top) + int(height))
 
 class Title:
     def __init__(self, title_info):
