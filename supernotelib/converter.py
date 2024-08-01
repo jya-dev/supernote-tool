@@ -352,21 +352,28 @@ class PdfConverter:
 
     def _create_pdf(self, buf, imglist, renderer_class, enable_link, enable_keyword):
         c = canvas.Canvas(buf, pagesize=self.pagesize)
+        keywords = self.note.get_keywords()
         for n, img in enumerate(imglist):
+            print('Page: '+str(n))
             page = self.note.get_page(n)
+            pageid = page.get_pageid()
             horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
             pagesize = landscape(self.pagesize) if horizontal else portrait(self.pagesize)
             c.setPageSize(pagesize)
             renderer = renderer_class(img, pagesize)
             renderer.draw(c)
             if enable_keyword:
-                keywords = self.note.get_keywords()
+                found = []
                 for keyword in keywords:
-                    if keyword.get_page_number() != n:
+                    if keyword.get_page_number() == n:
+                        found.append(keyword)
+                for i in found:
+                    try:
+                        print('Added Keyword: '+i.get_keyword()+' Keyword Page: '+str(i.get_page_number()))
+                        c.bookmarkPage(pageid)
+                        c.addOutlineEntry(i.get_keyword(),pageid,0,0)
+                    except:
                         continue
-                    else:
-                        pageid = page.get_pageid()
-                        c.addOutlineEntry(str(keyword),pageid,0,0)
             if enable_link:
                 pageid = page.get_pageid()
                 if pageid is not None:
