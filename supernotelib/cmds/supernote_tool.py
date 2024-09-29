@@ -77,7 +77,7 @@ def convert_to_svg(args, notebook, palette):
 def convert_to_pdf(args, notebook, palette):
     vectorize = args.pdf_type == 'vector'
     use_link = not args.no_link
-    use_keyword = not args.no_keyword
+    use_keyword = args.add_keyword
     converter = PdfConverter(notebook, palette=palette)
     def save(data, file_name):
         if data is not None:
@@ -184,7 +184,7 @@ def main():
     parser_convert.add_argument('--exclude-background', action='store_true', default=False, help='exclude background and make it transparent (PNG and SVG are supported)')
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--no-link', action='store_true', default=False, help='disable links in PDF')
-    parser_convert.add_argument('--no-keyword', action='store_true', default=False, help='disable keywords in PDF')
+    parser_convert.add_argument('--add-keyword', action='store_true', default=False, help='enable keywords in PDF')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
 

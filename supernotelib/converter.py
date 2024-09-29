@@ -354,7 +354,6 @@ class PdfConverter:
         c = canvas.Canvas(buf, pagesize=self.pagesize)
         keywords = self.note.get_keywords()
         for n, img in enumerate(imglist):
-            print('Page: '+str(n))
             page = self.note.get_page(n)
             pageid = page.get_pageid()
             horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
@@ -369,11 +368,8 @@ class PdfConverter:
                         found.append(keyword)
                 for i in found:
                     try:
-                        print('Added Keyword: '+i.get_keyword()+' Keyword Page: '+str(i.get_page_number()))
                         c.bookmarkPage(pageid)
                         scaled_rect = self._calc_link_rect(i.get_rect(), renderer.get_scale())
-                        #c.linkAbsolute(i.get_keyword(), pageid, scaled_rect)
-                        #c.addOutlineEntry(i.get_keyword(),pageid,0,0)
                         c.textAnnotation(i.get_keyword(),scaled_rect)
                     except:
                         continue
@@ -383,10 +379,6 @@ class PdfConverter:
                     c.bookmarkPage(pageid)
                     self._add_links(c, n, renderer.get_scale())
             c.showPage()
-            #c.showOutline()
-        c.setTitle('Notes')
-        c.setSubject('Notes')
-        c.setAuthor('Author')
         c.save()
 
     def _add_links(self, cvs, page_number, scale):
