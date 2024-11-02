@@ -165,7 +165,8 @@ def parse_color(color_string):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Unofficial python tool for Ratta Supernote')
+    parser = argparse.ArgumentParser(prog='supernote-tool', description='Unofficial python tool for Ratta Supernote')
+    parser.add_argument('--version', help='show version information and exit', action='version', version=f'%(prog)s {sn.__version__}')
     subparsers = parser.add_subparsers()
 
     # 'analyze' subcommand
