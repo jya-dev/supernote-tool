@@ -474,4 +474,4 @@ class TextConverter:
         if text_list is None:
             return None
         return ' '.join(text_list)
-    
+
