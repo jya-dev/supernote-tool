@@ -34,13 +34,14 @@ def convert_all(converter, total, file_name, save_func, visibility_overlay):
         img = converter.convert(i, visibility_overlay)
         save_func(img, numbered_filename)
 
-def convert_and_concat_all(converter, total, file_name, save_func):
+def convert_and_concat_all(converter, total, file_name, save_func, separator):
     data = []
     for i in range(total):
         data.append(converter.convert(i))
     data = list(filter(lambda x : x is not None, data))
     if len(data) > 0:
-        save_func('\n'.join(data), file_name)
+        alldata = ((separator + '\n') if separator else '').join(f'{row}\n' for row in data)
+        save_func(alldata, file_name)
     else:
         print('no data')
 
@@ -102,7 +103,7 @@ def convert_to_txt(args, notebook, palette):
             print('no data')
     if args.all:
         total = notebook.get_total_pages()
-        convert_and_concat_all(converter, total, args.output, save)
+        convert_and_concat_all(converter, total, args.output, save, args.text_page_separator)
     else:
         data = converter.convert(args.number)
         save(data, args.output)
@@ -185,6 +186,7 @@ def main():
     parser_convert.add_argument('--pdf-type', choices=['original', 'vector'], default='original', help='select PDF conversion type')
     parser_convert.add_argument('--no-link', action='store_true', default=False, help='disable links in PDF')
     parser_convert.add_argument('--add-keyword', action='store_true', default=False, help='enable keywords in PDF')
+    parser_convert.add_argument('--text-page-separator', type=str, default='', help='page separator string for text conversion')
     parser_convert.add_argument('--policy', choices=['strict', 'loose'], default='strict', help='select parser policy')
     parser_convert.set_defaults(handler=subcommand_convert)
 
