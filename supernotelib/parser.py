@@ -288,6 +288,7 @@ def _get_page_number_from_footer_property(footer, prefix):
 
 class SupernoteParser:
     """Parser for original Supernote."""
+    SN_SIGNATURE_OFFSET = 0
     SN_SIGNATURE_PATTERN = r'SN_FILE_ASA_\d{8}'
     SN_SIGNATURES = ['SN_FILE_ASA_20190529']
 
@@ -333,6 +334,8 @@ class SupernoteParser:
         SupernoteMetadata
             metadata of the file
         """
+        # parse file type
+        filetype = self._parse_filetype(stream)
         # check file signature
         signature = self._find_matching_signature(stream)
         if signature is None:
@@ -353,11 +356,17 @@ class SupernoteParser:
         pages = list(map(lambda addr: self._parse_page_block(stream, addr), page_addresses))
 
         metadata = fileformat.SupernoteMetadata()
+        metadata.type = filetype
         metadata.signature = signature
         metadata.header = header
         metadata.footer = footer
         metadata.pages = pages
         return metadata
+
+    def _parse_filetype(self, fobj):
+        fobj.seek(0, os.SEEK_SET)
+        filetype = fobj.read(4).decode()
+        return filetype
 
     def _find_matching_signature(self, fobj):
         """Reads signature from file object and returns matching signature.
@@ -374,7 +383,7 @@ class SupernoteParser:
         """
         for sig in self.SN_SIGNATURES:
             try:
-                fobj.seek(0, os.SEEK_SET)
+                fobj.seek(self.SN_SIGNATURE_OFFSET, os.SEEK_SET)
                 signature = fobj.read(len(sig)).decode()
             except UnicodeDecodeError:
                 # try next signature
@@ -516,19 +525,20 @@ class SupernoteParser:
 
 class SupernoteXParser(SupernoteParser):
     """Parser for Supernote X-series."""
-    SN_SIGNATURE_PATTERN = r'noteSN_FILE_VER_\d{8}'
+    SN_SIGNATURE_OFFSET = 4
+    SN_SIGNATURE_PATTERN = r'SN_FILE_VER_\d{8}'
     SN_SIGNATURES = [
-        'noteSN_FILE_VER_20200001', # Firmware version C.053
-        'noteSN_FILE_VER_20200005', # Firmware version C.077
-        'noteSN_FILE_VER_20200006', # Firmware version C.130
-        'noteSN_FILE_VER_20200007', # Firmware version C.159
-        'noteSN_FILE_VER_20200008', # Firmware version C.237
-        'noteSN_FILE_VER_20210009', # Firmware version C.291
-        'noteSN_FILE_VER_20210010', # Firmware version Chauvet 2.1.6
-        'noteSN_FILE_VER_20220011', # Firmware version Chauvet 2.5.17
-        'noteSN_FILE_VER_20220013', # Firmware version Chauvet 2.6.19
-        'noteSN_FILE_VER_20230014', # Firmware version Chauvet 2.10.25
-        'noteSN_FILE_VER_20230015'  # Firmware version Chauvet 3.14.27
+        'SN_FILE_VER_20200001', # Firmware version C.053
+        'SN_FILE_VER_20200005', # Firmware version C.077
+        'SN_FILE_VER_20200006', # Firmware version C.130
+        'SN_FILE_VER_20200007', # Firmware version C.159
+        'SN_FILE_VER_20200008', # Firmware version C.237
+        'SN_FILE_VER_20210009', # Firmware version C.291
+        'SN_FILE_VER_20210010', # Firmware version Chauvet 2.1.6
+        'SN_FILE_VER_20220011', # Firmware version Chauvet 2.5.17
+        'SN_FILE_VER_20220013', # Firmware version Chauvet 2.6.19
+        'SN_FILE_VER_20230014', # Firmware version Chauvet 2.10.25
+        'SN_FILE_VER_20230015'  # Firmware version Chauvet 3.14.27
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 
