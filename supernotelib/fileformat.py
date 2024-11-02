@@ -421,3 +421,6 @@ class Layer:
 
     def get_protocol(self):
         return self.metadata.get('LAYERPROTOCOL')
+
+    def get_type(self):
+        return self.metadata.get('LAYERTYPE')

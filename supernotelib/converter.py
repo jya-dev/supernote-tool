@@ -180,7 +180,8 @@ class ImageConverter:
         visibility = {}
         info = page.get_layer_info()
         if info is None:
-            return visibility
+            # pass to the process of getting visibility for mark file
+            return self._get_mark_layer_visibility(page)
         info_array = json.loads(info)
         for layer in info_array:
             is_bg_layer = layer.get('isBackgroundLayer')
@@ -196,6 +197,14 @@ class ImageConverter:
         # some old files don't include MAINLAYER info, so we set MAINLAYER visible
         if visibility.get('MAINLAYER') is None:
             visibility['MAINLAYER'] = True
+        return visibility
+
+    def _get_mark_layer_visibility(self, page):
+        visibility = {}
+        layers = page.get_layers()
+        for layer in layers:
+            name = layer.get_name()
+            visibility[name] = (layer.get_type() == 'MARK')
         return visibility
 
     def find_decoder(self, page, highres_grayscale=False):
