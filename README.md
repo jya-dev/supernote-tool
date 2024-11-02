@@ -68,6 +68,12 @@ To extract text from a real-time recognition note introduced from Chauvet2.7.21:
 $ supernote-tool convert -t txt -a your.note output.txt
 ```
 
+You can specify a page separator string for text conversion:
+
+```
+$ supernote-tool convert -t txt -a --text-page-separator='----' your.note output.txt
+```
+
 For developers, dump note metadata as JSON format:
 
 ```
