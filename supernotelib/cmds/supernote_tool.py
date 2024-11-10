@@ -38,9 +38,9 @@ def convert_and_concat_all(converter, total, file_name, save_func, separator):
     data = []
     for i in range(total):
         data.append(converter.convert(i))
-    data = list(filter(lambda x : x is not None, data))
+    data = list(map(lambda x : '' if x is None else (x + '\n'), data))
     if len(data) > 0:
-        alldata = ((separator + '\n') if separator else '').join(f'{row}\n' for row in data)
+        alldata = ((separator + '\n') if separator else '').join(data)
         save_func(alldata, file_name)
     else:
         print('no data')
