@@ -23,7 +23,6 @@ import zlib
 
 from . import color
 from . import exceptions
-from . import fileformat
 
 
 class BaseDecoder:
@@ -42,13 +41,17 @@ class FlateDecoder(BaseDecoder):
     INTERNAL_PAGE_HEIGHT = 1888
     INTERNAL_PAGE_WIDTH = 1404
 
-    def decode(self, data, palette=None, all_blank=False, horizontal=False):
+    def decode(self, data, page_width, page_height, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
         ----------
         data : bytes
             compressed bitmap data
+        page_width : int
+            page width
+        page_height : int
+            page height
 
         Returns
         -------
@@ -83,7 +86,7 @@ class FlateDecoder(BaseDecoder):
             bitmap[bitmap == self.COLORCODE_GRAY] = palette.gray
             bitmap[bitmap == self.COLORCODE_BACKGROUND] = palette.white
             bitmap = bitmap.astype(np.uint8)
-        return bitmap.tobytes(), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+        return bitmap.tobytes(), (page_width, page_height), bit_per_pixel
 
 
 class RattaRleDecoder(BaseDecoder):
@@ -101,13 +104,17 @@ class RattaRleDecoder(BaseDecoder):
     SPECIAL_LENGTH = 0x4000
     SPECIAL_LENGTH_FOR_BLANK = 0x400
 
-    def decode(self, data, palette=None, all_blank=False, horizontal=False):
+    def decode(self, data, page_width, page_height, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
         ----------
         data : bytes
             compressed bitmap data
+        page_width : int
+            page width
+        page_height : int
+            page height
 
         Returns
         -------
@@ -128,8 +135,6 @@ class RattaRleDecoder(BaseDecoder):
 
         colormap = self._create_colormap(palette)
 
-        page_height = fileformat.PAGE_HEIGHT
-        page_width = fileformat.PAGE_WIDTH
         if horizontal:
             page_height, page_width = (page_width, page_height) # swap width and height
 
@@ -262,13 +267,17 @@ class RattaRleX2Decoder(RattaRleDecoder):
 class PngDecoder(BaseDecoder):
     """Decoder for PNG."""
 
-    def decode(self, data, palette=None, all_blank=False, horizontal=False):
+    def decode(self, data, page_width, page_height, palette=None, all_blank=False, horizontal=False):
         """Uncompress bitmap data.
 
         Parameters
         ----------
         data : bytes
             png data
+        page_width : int
+            page width
+        page_height : int
+            page height
 
         Returns
         -------
@@ -281,8 +290,8 @@ class PngDecoder(BaseDecoder):
         """
         r = png.Reader(bytes=data)
         (width, height, rows, info) = r.asRGBA()
-        if width != fileformat.PAGE_WIDTH or height != fileformat.PAGE_HEIGHT:
-            raise exceptions.DecoderException(f'invalid size = ({width}, {height}), expected = ({fileformat.PAGE_WIDTH}, {fileformat.PAGE_HEIGHT})')
+        if width != page_width or height != page_height:
+            raise exceptions.DecoderException(f'invalid size = ({width}, {height}), expected = ({page_width}, {page_height})')
         values = [x for row in rows for x in row] # flatten rows
         depth = info['bitdepth']
         greyscale = info['greyscale']
@@ -291,7 +300,7 @@ class PngDecoder(BaseDecoder):
         if alpha:
             ch = ch + 1
         bit_per_pixel = depth * ch
-        return bytes(values), (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), bit_per_pixel
+        return bytes(values), (page_width, page_height), bit_per_pixel
 
 
 class TextDecoder(BaseDecoder):
