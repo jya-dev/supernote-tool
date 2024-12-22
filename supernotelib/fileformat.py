@@ -23,6 +23,9 @@ from . import exceptions
 
 PAGE_HEIGHT = 1872
 PAGE_WIDTH = 1404
+A5X2_PAGE_HEIGHT = 2560
+A5X2_PAGE_WIDTH = 1920
+
 
 ADDRESS_SIZE = 4
 LENGTH_FIELD_SIZE = 4
@@ -135,6 +138,11 @@ class SupernoteMetadata:
 class Notebook:
     def __init__(self, metadata):
         self.metadata = metadata
+        self.page_width = PAGE_WIDTH
+        self.page_height = PAGE_HEIGHT
+        if (self.metadata.header.get('APPLY_EQUIPMENT') == 'N5'):
+            self.page_width = A5X2_PAGE_WIDTH
+            self.page_height = A5X2_PAGE_HEIGHT
         self.type = metadata.type
         self.signature = metadata.signature
         self.cover = Cover()
@@ -160,6 +168,12 @@ class Notebook:
 
     def get_metadata(self):
         return self.metadata
+
+    def get_width(self):
+        return self.page_width
+
+    def get_height(self):
+        return self.page_height
 
     def get_type(self):
         return self.type

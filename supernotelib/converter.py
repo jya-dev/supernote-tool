@@ -90,7 +90,7 @@ class ImageConverter:
     def _convert_nonlayered_page(self, page, palette=None, visibility_overlay=None, highres_grayscale=False):
         binary = page.get_content()
         if binary is None:
-            return Image.new('L', (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT), color=color.TRANSPARENT)
+            return Image.new('L', (self.note.get_width(), self.note.get_height()), color=color.TRANSPARENT)
         decoder = self.find_decoder(page)
         return self._create_image_from_decoder(decoder, binary, palette=palette)
 
@@ -126,7 +126,7 @@ class ImageConverter:
             mask = mask.point(lambda x: 0 if x == color.TRANSPARENT else 1, mode='1')
             return Image.composite(fg, bg, mask)
         horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
-        page_width, page_height = (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)
+        page_width, page_height = (self.note.get_width(), self.note.get_height())
         if horizontal:
             page_height, page_width = (page_width, page_height)
         flatten_img = Image.new('RGB', (page_width, page_height), color=color.RGB_TRANSPARENT)
@@ -163,7 +163,9 @@ class ImageConverter:
         return Image.composite(transparent_img, img, mask)
 
     def _create_image_from_decoder(self, decoder, binary, palette=None, blank_hint=False, horizontal=False):
-        bitmap, size, bpp = decoder.decode(binary, palette=palette, all_blank=blank_hint, horizontal=horizontal)
+        page_width = self.note.get_width()
+        page_height = self.note.get_height()
+        bitmap, size, bpp = decoder.decode(binary, page_width, page_height, palette=palette, all_blank=blank_hint, horizontal=horizontal)
         if bpp == 32:
             img = Image.frombytes('RGBA', size, bitmap)
         elif bpp == 24:
@@ -253,7 +255,7 @@ class SvgConverter:
         """
         page = self.note.get_page(page_number)
         horizontal = page.get_orientation() == fileformat.Page.ORIENTATION_HORIZONTAL
-        page_width, page_height = (fileformat.PAGE_WIDTH, fileformat.PAGE_HEIGHT)
+        page_width, page_height = (self.note.get_width(), self.note.get_height())
         if horizontal:
             page_height, page_width = (page_width, page_height)
         dwg = svgwrite.Drawing('dummy.svg', profile='full', size=(page_width, page_height))
