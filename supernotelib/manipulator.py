@@ -81,20 +81,23 @@ class NotebookBuilder:
 
 def reconstruct(notebook):
     """Reconstruct a notebook for debug."""
-    expected_signature = 'noteSN_FILE_VER_20210010'
+    expected_signature = parser.SupernoteXParser.SN_SIGNATURES[-1] # latest supported signature
     metadata = notebook.get_metadata()
     if metadata.signature != expected_signature:
         raise ValueError(f'Only latest file format version is supported ({metadata.signature} != {expected_signature})')
 
     builder = NotebookBuilder()
+    _pack_type(builder, notebook)
     _pack_signature(builder, notebook)
     _pack_header(builder, notebook)
     _pack_cover(builder, notebook)
     _pack_keywords(builder, notebook)
     _pack_titles(builder, notebook)
+    _pack_links(builder, notebook)
     _pack_backgrounds(builder, notebook)
     _pack_pages(builder, notebook)
     _pack_footer(builder)
+    _pack_tail(builder)
     _pack_footer_address(builder)
     reconstructed_binary = builder.build()
     # check file format integrity
@@ -102,8 +105,8 @@ def reconstruct(notebook):
         stream = io.BytesIO(reconstructed_binary)
         xparser = parser.SupernoteXParser()
         _ = xparser.parse_stream(stream)
-    except:
-        raise exceptions.GeneratedFileValidationException('generated file fails validation')
+    except Exception as e:
+        raise exceptions.GeneratedFileValidationException(f'generated file fails validation: {e}')
     return reconstructed_binary
 
 def merge(notebook1, notebook2):
@@ -111,7 +114,7 @@ def merge(notebook1, notebook2):
     # TODO: support non-X series
     metadata1 = notebook1.get_metadata()
     metadata2 = notebook2.get_metadata()
-    expected_signature = 'noteSN_FILE_VER_20210010'
+    expected_signature = parser.SupernoteXParser.SN_SIGNATURES[-1] # latest supported signature
     if metadata1.signature != expected_signature:
         raise ValueError(f'Only latest file format version is supported ({metadata1.signature} != {expected_signature})')
     if metadata1.signature != metadata2.signature:
@@ -128,6 +131,7 @@ def merge(notebook1, notebook2):
     _verify_header_property('APP_VERSION', metadata1, metadata2)
 
     builder = NotebookBuilder()
+    _pack_type(builder, notebook1)
     _pack_signature(builder, notebook1)
     _pack_header(builder, notebook1)
     _pack_cover(builder, notebook1)
@@ -135,11 +139,14 @@ def merge(notebook1, notebook2):
     _pack_keywords(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_titles(builder, notebook1)
     _pack_titles(builder, notebook2, offset=notebook1.get_total_pages())
+    _pack_links(builder, notebook1)
+    _pack_links(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_backgrounds(builder, notebook1)
     _pack_backgrounds(builder, notebook2)
     _pack_pages(builder, notebook1)
     _pack_pages(builder, notebook2, offset=notebook1.get_total_pages())
     _pack_footer(builder)
+    _pack_tail(builder)
     _pack_footer_address(builder)
     merged_binary = builder.build()
     # check file format integrity
@@ -147,9 +154,13 @@ def merge(notebook1, notebook2):
         stream = io.BytesIO(merged_binary)
         xparser = parser.SupernoteXParser()
         _ = xparser.parse_stream(stream)
-    except:
-        raise exceptions.GeneratedFileValidationException('generated file fails validation')
+    except Exception as e:
+        raise exceptions.GeneratedFileValidationException(f'generated file fails validation: {e}')
     return merged_binary
+
+def _pack_type(builder, notebook):
+    metadata = notebook.get_metadata()
+    builder.append('__type__', metadata.type.encode('ascii'), skip_block_size=True)
 
 def _pack_signature(builder, notebook):
     metadata = notebook.get_metadata()
@@ -164,7 +175,7 @@ def _pack_cover(builder, notebook):
     metadata = notebook.get_metadata()
     cover_block = notebook.get_cover().get_content()
     if cover_block is not None:
-        builder.append('COVER_1', cover_block)
+        builder.append('COVER_2', cover_block)
 
 def _pack_keywords(builder, notebook, offset=0):
     for keyword in notebook.get_keywords():
@@ -172,8 +183,8 @@ def _pack_keywords(builder, notebook, offset=0):
         if page_number > 9999:
             # the number of digits is limited to 4, so we ignore this keyword
             continue
-        position = keyword.get_position()
-        id = f'{page_number:04d}{position:04d}'
+        position = keyword.get_position_string()
+        id = f'{page_number:04d}{position}'
         content = keyword.get_content()
         if content is not None:
             builder.append(f'KEYWORD_{id}', content, allow_duplicate=True)
@@ -193,8 +204,8 @@ def _pack_titles(builder, notebook, offset=0):
         if page_number > 9999:
             # the number of digits is limited to 4, so we ignore this keyword
             continue
-        position = title.get_position()
-        id = f'{page_number:04d}{position:04d}'
+        position = title.get_position_string()
+        id = f'{page_number:04d}{position}'
         content = title.get_content()
         if content is not None:
             builder.append(f'TITLE_{id}', content, allow_duplicate=True)
@@ -206,6 +217,26 @@ def _pack_titles(builder, notebook, offset=0):
                 title_metadata['TITLEBITMAP'] = str(address_list[-1]) # use last address
             title_metadata_block = _construct_metadata_block(title_metadata)
             builder.append(f'TITLE_{id}/metadata', title_metadata_block, allow_duplicate=True)
+
+def _pack_links(builder, notebook, offset=0):
+    for link in notebook.get_links():
+        page_number = link.get_page_number() + 1 + offset
+        if page_number > 9999:
+            # the number of digits is limited to 4, so we ignore this keyword
+            continue
+        position = link.get_position_string()
+        id = f'{page_number:04d}{position}'
+        content = link.get_content()
+        if content is not None:
+            builder.append(f'LINKO_{id}', content, allow_duplicate=True)
+            link_metadata = link.metadata
+            address_list = builder.get_duplicate_block_address_list(f'LINKO_{id}')
+            if len(address_list) == 1:
+                link_metadata['LINKBITMAP'] = str(address_list[0])
+            else:
+                link_metadata['LINKBITMAP'] = str(address_list[-1]) # use last address
+            link_metadata_block = _construct_metadata_block(link_metadata)
+            builder.append(f'LINKO_{id}/metadata', link_metadata_block, allow_duplicate=True)
 
 def _pack_backgrounds(builder, notebook):
     for i in range(notebook.get_total_pages()):
@@ -262,38 +293,49 @@ def _pack_pages(builder, notebook, offset=0):
 def _pack_footer(builder):
     metadata_footer = {}
     metadata_footer.setdefault('FILE_FEATURE', builder.get_block_address('__header__'))
-    address = builder.get_block_address('COVER_1')
-    if address == 0:
-        metadata_footer['COVER_0'] = 0
-    else:
-        metadata_footer['COVER_1'] = address
-    for label in builder.get_labels():
-        if re.match(r'KEYWORD_\d{8}/metadata', label):
-            address_list = builder.get_duplicate_block_address_list(label)
-            label = label[:-len('/metadata')]
-            if len(address_list) == 1:
-                metadata_footer.setdefault(label, address_list[0])
-            else:
-                metadata_footer[label] = address_list
-    for label in builder.get_labels():
-        if re.match(r'TITLE_\d{8}/metadata', label):
-            address_list = builder.get_duplicate_block_address_list(label)
-            label = label[:-len('/metadata')]
-            if len(address_list) == 1:
-                metadata_footer.setdefault(label, address_list[0])
-            else:
-                metadata_footer[label] = address_list
-    for label in builder.get_labels():
-        if label.startswith('STYLE_'):
-            address = builder.get_block_address(label)
-            metadata_footer.setdefault(label, address)
     for label in builder.get_labels():
         if re.match(r'PAGE\d+/metadata', label):
             address = builder.get_block_address(label)
             label = label[:-len('/metadata')]
             metadata_footer.setdefault(label, address)
+    for label in builder.get_labels():
+        if re.match(r'TITLE_\d+/metadata', label):
+            address_list = builder.get_duplicate_block_address_list(label)
+            label = label[:-len('/metadata')]
+            if len(address_list) == 1:
+                metadata_footer.setdefault(label, address_list[0])
+            else:
+                metadata_footer[label] = address_list
+    for label in builder.get_labels():
+        if re.match(r'KEYWORD_\d+/metadata', label):
+            address_list = builder.get_duplicate_block_address_list(label)
+            label = label[:-len('/metadata')]
+            if len(address_list) == 1:
+                metadata_footer.setdefault(label, address_list[0])
+            else:
+                metadata_footer[label] = address_list
+    for label in builder.get_labels():
+        if re.match(r'LINKO_\d+/metadata', label):
+            address_list = builder.get_duplicate_block_address_list(label)
+            label = label[:-len('/metadata')]
+            if len(address_list) == 1:
+                metadata_footer.setdefault(label, address_list[0])
+            else:
+                metadata_footer[label] = address_list
+    address = builder.get_block_address('COVER_2')
+    if address == 0:
+        metadata_footer['COVER_0'] = 0
+    else:
+        metadata_footer['COVER_2'] = address
+    for label in builder.get_labels():
+        if label.startswith('STYLE_'):
+            address = builder.get_block_address(label)
+            metadata_footer.setdefault(label, address)
     footer_block = _construct_metadata_block(metadata_footer)
     builder.append('__footer__', footer_block)
+
+def _pack_tail(builder):
+    builder.append('__tail__', b'tail', skip_block_size=True)
 
 def _pack_footer_address(builder):
     footer_address = builder.get_block_address('__footer__')

@@ -225,7 +225,6 @@ class Keyword:
         self.metadata = keyword_info
         self.content = None
         self.page_number = int(self.metadata['KEYWORDPAGE']) - 1
-        self.position = int(self.metadata['KEYWORDRECT'].split(',')[1]) # get top value from "left,top,width,height"
 
     def set_content(self, content):
         self.content = content
@@ -236,8 +235,9 @@ class Keyword:
     def get_page_number(self):
         return self.page_number
 
-    def get_position(self):
-        return self.position
+    def get_position_string(self):
+        (left, top, width, height) = self.metadata['KEYWORDRECTORI'].split(',')
+        return f'{int(top):04d}'
 
     def get_keyword(self):
         return None if self.metadata['KEYWORD'] is None else str(self.metadata['KEYWORD'])
@@ -251,7 +251,6 @@ class Title:
         self.metadata = title_info
         self.content = None
         self.page_number = 0
-        self.position = int(self.metadata['TITLERECTORI'].split(',')[1]) # get top value from "left,top,width,height"
 
     def set_content(self, content):
         self.content = content
@@ -265,8 +264,9 @@ class Title:
     def get_page_number(self):
         return self.page_number
 
-    def get_position(self):
-        return self.position
+    def get_position_string(self):
+        (left, top, width, height) = self.metadata['TITLERECTORI'].split(',')
+        return f'{int(top):04d}{int(left):04d}'
 
 class Link:
     TYPE_PAGE_LINK = 0
@@ -299,8 +299,9 @@ class Link:
     def get_inout(self):
         return int(self.metadata['LINKINOUT'])
 
-    def get_position(self):
-        return int(self.metadata['LINKRECT'].split(',')[1]) # get top value from "left,top,width,height"
+    def get_position_string(self):
+        (left, top, width, height) = self.metadata['LINKRECT'].split(',')
+        return f'{int(top):04d}{int(left):04d}{int(height):04d}{int(width):04d}'
 
     def get_rect(self):
         (left, top, width, height) = self.metadata['LINKRECT'].split(',')

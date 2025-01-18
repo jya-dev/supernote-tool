@@ -178,7 +178,9 @@ def _get_cover_address(metadata):
     int
         cover address
     """
-    if 'COVER_1' in metadata.footer:
+    if 'COVER_2' in metadata.footer:
+        address = int(metadata.footer['COVER_2'])
+    elif 'COVER_1' in metadata.footer:
         address = int(metadata.footer['COVER_1'])
     else:
         address = 0
