@@ -19,25 +19,28 @@ import io
 import os
 import sys
 
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from colour import Color
 
 import supernotelib as sn
 from supernotelib.converter import ImageConverter, SvgConverter, PdfConverter, TextConverter
 from supernotelib.converter import VisibilityOverlay
 
-def convert_all(converter, total, file_name, save_func, visibility_overlay):
+def convert_all(converter, total, file_name, save_func, visibility_overlay, max_workers=None):
     basename, extension = os.path.splitext(file_name)
     max_digits = len(str(total))
-    for i in range(total):
+    func = partial(converter.convert, visibility_overlay=visibility_overlay)
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        imgs = list(executor.map(func, range(total)))
+    for i, img in enumerate(imgs):
         # append page number between filename and extention
         numbered_filename = basename + '_' + str(i).zfill(max_digits) + extension
-        img = converter.convert(i, visibility_overlay)
         save_func(img, numbered_filename)
 
-def convert_and_concat_all(converter, total, file_name, save_func, separator):
-    data = []
-    for i in range(total):
-        data.append(converter.convert(i))
+def convert_and_concat_all(converter, total, file_name, save_func, separator, max_workers=None):
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        data = list(executor.map(converter.convert, range(total)))
     data = list(map(lambda x : '' if x is None else (x + '\n'), data))
     if len(data) > 0:
         alldata = ((separator + '\n') if separator else '').join(data)
@@ -53,7 +56,7 @@ def convert_to_png(args, notebook, palette):
         img.save(file_name, format='PNG')
     if args.all:
         total = notebook.get_total_pages()
-        convert_all(converter, total, args.output, save, vo)
+        convert_all(converter, total, args.output, save, vo, max_workers=args.workers)
     else:
         img = converter.convert(args.number, visibility_overlay=vo)
         save(img, args.output)
@@ -70,7 +73,7 @@ def convert_to_svg(args, notebook, palette):
             print('no path data')
     if args.all:
         total = notebook.get_total_pages()
-        convert_all(converter, total, args.output, save, vo)
+        convert_all(converter, total, args.output, save, vo, max_workers=args.workers)
     else:
         svg = converter.convert(args.number, visibility_overlay=vo)
         save(svg, args.output)
@@ -87,7 +90,7 @@ def convert_to_pdf(args, notebook, palette):
         else:
             print('no data')
     if args.all:
-        data = converter.convert(-1, vectorize, enable_link=use_link, enable_keyword=use_keyword) # minus value means converting all pages
+        data = converter.convert(-1, vectorize, enable_link=use_link, enable_keyword=use_keyword, max_workers=args.workers) # minus value means converting all pages
         save(data, args.output)
     else:
         data = converter.convert(args.number, vectorize, enable_link=use_link, enable_keyword=use_keyword)
@@ -103,7 +106,7 @@ def convert_to_txt(args, notebook, palette):
             print('no data')
     if args.all:
         total = notebook.get_total_pages()
-        convert_and_concat_all(converter, total, args.output, save, args.text_page_separator)
+        convert_and_concat_all(converter, total, args.output, save, args.text_page_separator, max_workers=args.workers)
     else:
         data = converter.convert(args.number)
         save(data, args.output)
@@ -181,6 +184,7 @@ def main():
     parser_convert.add_argument('output', type=str, help='output image file')
     parser_convert.add_argument('-n', '--number', type=int, default=0, help='page number to be converted')
     parser_convert.add_argument('-a', '--all', action='store_true', default=False, help='convert all pages')
+    parser_convert.add_argument('-j', '--workers', type=int, default=min(os.cpu_count() or 1, 8), help='number of worker processes')
     parser_convert.add_argument('-c', '--color', type=str, help='colorize note with comma separated color codes in order of black, darkgray, gray and white.')
     parser_convert.add_argument('-t', '--type', choices=['png', 'svg', 'pdf', 'txt'], default='png', help='select conversion file type')
     parser_convert.add_argument('--exclude-background', action='store_true', default=False, help='exclude background and make it transparent (PNG and SVG are supported)')

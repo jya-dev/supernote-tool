@@ -19,6 +19,7 @@ import json
 import potrace
 import svgwrite
 
+from concurrent.futures import ProcessPoolExecutor
 from enum import Enum, auto
 from io import BytesIO
 
@@ -322,7 +323,7 @@ class PdfConverter:
         self.palette = palette
         self.pagesize = A4
 
-    def convert(self, page_number, vectorize=False, enable_link=False, enable_keyword=False):
+    def convert(self, page_number, vectorize=False, enable_link=False, enable_keyword=False, max_workers=None):
         """Returns PDF data of the given page.
 
         Parameters
@@ -335,6 +336,8 @@ class PdfConverter:
             enable page links and web links
         enable_keyword : bool
             enable page link where keyword has been identified
+        max_workers : int
+            max workers for parallel conversion
 
         Returns
         -------
@@ -347,19 +350,18 @@ class PdfConverter:
         else:
             converter = ImageConverter(self.note, self.palette)
             renderer_class = PdfConverter.ImgPageRenderer
-        imglist = self._create_image_list(converter, page_number)
+        imglist = self._create_image_list(converter, page_number, max_workers=max_workers)
         pdf_data = BytesIO()
         self._create_pdf(pdf_data, imglist, renderer_class, enable_link, enable_keyword)
         return pdf_data.getvalue()
 
-    def _create_image_list(self, converter, page_number):
+    def _create_image_list(self, converter, page_number, max_workers=None):
         imglist = []
         if page_number < 0:
             # convert all pages
             total = self.note.get_total_pages()
-            for i in range(total):
-                img = converter.convert(i)
-                imglist.append(img)
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                imglist = list(executor.map(converter.convert, range(total)))
         else:
             img = converter.convert(page_number)
             imglist.append(img)

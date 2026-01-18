@@ -74,6 +74,13 @@ You can specify a page separator string for text conversion:
 $ supernote-tool convert -t txt -a --text-page-separator='----' your.note output.txt
 ```
 
+You can also specify number of cpu threads used using `--workers` or `-j` (speeds the conversion up a little):
+```
+$ supernote-tool convert -t pdf -a -j 15 your.note finmat2.pdf
+```
+The default setting uses up to 8 threads.
+
+
 For developers, dump note metadata as JSON format:
 
 ```
