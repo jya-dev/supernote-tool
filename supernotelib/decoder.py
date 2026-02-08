@@ -307,7 +307,7 @@ class TextDecoder(BaseDecoder):
     """Decoder for text."""
 
     def decode(self, data, palette=None, all_blank=False, horizontal=False):
-        """Extract text from a realtime recognition data.
+        """Extract text from a realtime recognition data with spatial ordering.
 
         Parameters
         ----------
@@ -316,12 +316,34 @@ class TextDecoder(BaseDecoder):
 
         Returns
         -------
-        list of string
-            list of recognized text
+        list of dict
+            list of recognized text elements with spatial information.
+            Each element is a dict with 'label' (str) and 'y' (int) keys.
+            Returns None if no data available.
         """
         if data is None:
             return None
         recogn_json = base64.b64decode(data).decode('utf-8')
         recogn = json.loads(recogn_json)
         elements = recogn.get('elements')
-        return list(map(lambda e : e.get('label'), filter(lambda e : e.get('type') == 'Text', elements)))
+
+        # Extract text elements with their y-position for spatial ordering
+        result = []
+        for elem in filter(lambda e: e.get('type') == 'Text', elements):
+            label = elem.get('label', '')
+            if not label:
+                continue
+
+            # Get y-position from first word's bounding box
+            y = 0
+            words = elem.get('words', [])
+            if words:
+                for word in words:
+                    bbox = word.get('bounding-box')
+                    if bbox:
+                        y = bbox.get('y', 0)
+                        break
+
+            result.append({'label': label, 'y': y})
+
+        return result if result else None
