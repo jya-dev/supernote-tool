@@ -397,7 +397,7 @@ class SupernoteParser:
     def _check_signature_compatible(self, fobj):
         latest_signature = self.SN_SIGNATURES[-1]
         try:
-            fobj.seek(0, os.SEEK_SET)
+            fobj.seek(self.SN_SIGNATURE_OFFSET, os.SEEK_SET)
             signature = fobj.read(len(latest_signature)).decode()
         except Exception:
             return False
@@ -540,7 +540,8 @@ class SupernoteXParser(SupernoteParser):
         'SN_FILE_VER_20220011', # Firmware version Chauvet 2.5.17
         'SN_FILE_VER_20220013', # Firmware version Chauvet 2.6.19
         'SN_FILE_VER_20230014', # Firmware version Chauvet 2.10.25
-        'SN_FILE_VER_20230015'  # Firmware version Chauvet 3.14.27
+        'SN_FILE_VER_20230015', # Firmware version Chauvet 3.14.27
+        'SN_FILE_VER_20260016'  # Firmware version Chauvet 3.28.42
     ]
     LAYER_KEYS = ['MAINLAYER', 'LAYER1', 'LAYER2', 'LAYER3', 'BGLAYER']
 
