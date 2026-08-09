@@ -326,6 +326,7 @@ class Page:
 
     ORIENTATION_VERTICAL = "1000"
     ORIENTATION_HORIZONTAL = "1090"
+    ORIENTATION_HORIZONTAL_ALT = "1270"
 
     def __init__(self, page_info):
         self.metadata = page_info
@@ -418,7 +419,10 @@ class Page:
         return self.recogn_text
 
     def get_orientation(self):
-        return self.metadata.get('ORIENTATION', self.ORIENTATION_VERTICAL)
+        orientation = self.metadata.get('ORIENTATION', self.ORIENTATION_VERTICAL)
+        if orientation == self.ORIENTATION_HORIZONTAL_ALT:
+            return self.ORIENTATION_HORIZONTAL
+        return orientation
 
 class Layer:
     def __init__(self, layer_info):
