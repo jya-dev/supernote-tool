@@ -16,6 +16,7 @@ $ pip install supernotelib
 ```
 
 Using Nix (with Flakes enabled):
+(Nix support is community-maintained)
 
 ```
 $ nix profile install .
