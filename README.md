@@ -9,10 +9,23 @@ This tool is under development and may change.
 
 ## Installation
 
+Using pip:
+
 ```
 $ pip install supernotelib
 ```
 
+Using Nix (with Flakes enabled):
+
+```
+$ nix profile install .
+```
+
+or just run it without installing:
+
+```
+$ nix run github:jya-dev/supernote-tool -- convert your.note output.png
+```
 
 ## Usage
 
