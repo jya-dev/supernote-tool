@@ -37,7 +37,7 @@
 
                 supernote-tool = python.pkgs.buildPythonApplication rec {
                     pname = "supernotelib";
-                    version = "0.7.1";
+                    version = "0.7.3";
                     pyproject = true;
 
                     src = ./.;
